@@ -4,55 +4,95 @@ Monthly business intelligence emails for small businesses.
 
 ## Stack
 
-- Next.js 14 (App Router) + TypeScript, deployed on Vercel
+- Next.js 14 (App Router) + TypeScript + Tailwind
 - Supabase Postgres (data only — auth is custom)
-- Resend (transactional + bulk email)
-- iron-session for session cookies
+- Resend (email)
+- iron-session for cookies
 - Vercel Cron for scheduled email dispatch
 - Paystack (stubbed until paid plans go live)
 
-## Local setup
+---
 
-1. Copy `.env.example` → `.env.local` and fill values.
-2. Apply the migration in `supabase/migrations/0001_init.sql` to your Supabase project (SQL editor or `supabase db push`).
-3. Generate `ADMIN_PASSWORD_HASH` with:
-   ```bash
-   node -e "console.log(require('bcryptjs').hashSync(process.argv[1], 10))" 'YourAdminPassword'
-   ```
-4. Generate a `SESSION_SECRET` (>= 32 chars) and a `CRON_SECRET`.
-5. `npm install && npm run dev`.
+## 1. Create a Supabase project
 
-## Auth model
+1. Go to https://supabase.com → **New project**. Pick any name + region, set a database password (you won't need it for the app).
+2. In the project, open **Settings → API**. Copy:
+   - **Project URL** → this is `NEXT_PUBLIC_SUPABASE_URL`
+   - **service_role** key (under "Project API keys") → this is `SUPABASE_SERVICE_ROLE_KEY`
+   - The `anon` key is NOT used by this app.
+3. Open **SQL Editor → New query**. Paste the contents of `supabase/migrations/0001_init.sql` and click **Run**. You should see the new tables under **Table Editor**.
 
-- **Users**: email + 4-digit PIN via Resend. PIN is bcrypt-hashed in `login_pins`, expires in 10 min, max 5 attempts. Session stored in `intel_user_session` cookie (`iron-session`).
-- **Admin**: `/admin/login` checks `ADMIN_EMAIL` and bcrypt-compares against `ADMIN_PASSWORD_HASH` from Vercel env. Sets `intel_admin_session` cookie.
+> The `service_role` key bypasses Row Level Security. It must NEVER be exposed to the browser. This app only uses it from server actions / route handlers.
 
-## Sending insights
+## 2. Create a Resend account
 
-1. Admin signs into `/admin/login`.
-2. `/admin/insights` — pick a category, write subject + Markdown body, save draft.
-3. Open the draft → either **Schedule** (datetime-local) or **Send now**.
-4. `vercel.json` registers a cron at `*/15 * * * *` that hits `/api/cron/send-insights` (Bearer `CRON_SECRET`); the route dispatches any drafts whose `scheduled_for <= now()`.
-5. Resend webhook → `/api/webhooks/resend` updates `email_deliveries.status`.
+1. Go to https://resend.com → sign up.
+2. **Domains → Add domain**, add the domain you want to send from (e.g. `yourdomain.com`). Add the DNS records Resend shows you (SPF/DKIM). Wait until it shows "Verified".
+   - For local testing, you can skip this and use Resend's `onboarding@resend.dev` sender — emails will only deliver to the email address you signed up with.
+3. **API Keys → Create API Key** (full access). Copy it → this is `RESEND_API_KEY`.
+4. Set `RESEND_FROM_EMAIL` to something like `Intelligence <hello@yourdomain.com>` (or `onboarding@resend.dev` for testing).
+5. (Optional, after deploy) **Webhooks → Add Endpoint** pointing at `https://YOUR-VERCEL-URL/api/webhooks/resend` so delivery statuses appear in the admin "Deliveries" page.
+
+## 3. Set environment variables
+
+Copy `.env.example` → `.env.local` for local dev (and set the same values in **Vercel → Project → Settings → Environment Variables** for production).
+
+| Variable | What to set |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | From Supabase → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | From Supabase → Settings → API (service_role) |
+| `RESEND_API_KEY` | From Resend → API Keys |
+| `RESEND_FROM_EMAIL` | e.g. `Intelligence <hello@yourdomain.com>` |
+| `SESSION_SECRET` | Any random string, **at least 32 characters**. Generate with: `openssl rand -hex 32` |
+| `ADMIN_EMAIL` | The email you'll use to sign into `/admin` |
+| `ADMIN_PASSWORD` | The plain password you'll use to sign into `/admin` |
+| `CRON_SECRET` | Any random string. Generate with: `openssl rand -hex 32` |
+| `APP_URL` | `http://localhost:3000` for dev, your Vercel URL in prod |
+| `TRIAL_DAYS` | Optional, defaults to `30` |
+
+## 4. Run locally
+
+```bash
+npm install
+npm run dev
+```
+
+Visit http://localhost:3000.
+
+## 5. Deploy to Vercel
+
+1. Push the repo to GitHub.
+2. https://vercel.com → **Add New → Project** → import the repo. Framework auto-detects as Next.js.
+3. **Before clicking Deploy**, expand **Environment Variables** and paste every variable from the table above for the **Production** environment.
+4. Deploy. Once live, set `APP_URL` to your production URL and redeploy.
+5. The cron in `vercel.json` will start running automatically every 15 minutes against `/api/cron/send-insights` (Vercel handles the bearer token automatically; locally you can curl with `Authorization: Bearer $CRON_SECRET`).
+
+> If your first Vercel deploy failed, the most common cause is missing env vars — the app throws on first use of Supabase/Resend without them. Add the variables above and redeploy.
+
+---
+
+## Using it
+
+### Users
+- `/` — landing page with email input for free-trial signup.
+- `/login` → `/login/verify` — passwordless email + 4-digit PIN.
+- `/dashboard` — trial status overview.
+- `/categories` — pick which insight categories to receive.
+- `/subscription` — shows the trial status and a "Coming soon" Paystack button.
+
+### Admin
+- `/admin/login` — sign in with `ADMIN_EMAIL` + `ADMIN_PASSWORD`.
+- `/admin/insights` — compose new insight (pick category, write Markdown), see recent drafts.
+- `/admin/insights/[id]` — edit, preview, **Schedule** or **Send now**, see per-draft delivery stats.
+- `/admin/users` — see every signup with their plan + category count.
+- `/admin/deliveries` — recent 200 deliveries with status (from Resend webhook).
+
+### How emails go out
+- Admin schedules a draft for a date/time.
+- Vercel Cron hits `/api/cron/send-insights` every 15 minutes.
+- The route finds drafts whose `scheduled_for <= now()`, builds the recipient list (all `trialing`/`active` users subscribed to that draft's category), sends each via Resend, and inserts an `email_deliveries` row per recipient.
+- Resend's webhook posts back delivery events → `email_deliveries.status` updates.
 
 ## Payments
 
-Paystack is stubbed (`lib/paystack/`). The subscription page shows a disabled "Subscribe — coming soon" button. When ready to go live, implement the `PaystackClient` interface and wire the subscription page button to it.
-
-## Routes
-
-| Route | Purpose |
-| --- | --- |
-| `/` | Landing + free-trial signup |
-| `/login` | Request PIN |
-| `/login/verify` | Enter PIN |
-| `/dashboard` | Trial status + nav |
-| `/categories` | Choose subscribed categories |
-| `/subscription` | Trial status + Paystack placeholder |
-| `/admin/login` | Admin sign-in |
-| `/admin/insights` | List + compose drafts |
-| `/admin/insights/[id]` | Edit, schedule, send, preview, delivery stats |
-| `/admin/users` | User list |
-| `/admin/deliveries` | Delivery monitoring |
-| `/api/cron/send-insights` | Vercel Cron entrypoint |
-| `/api/webhooks/resend` | Resend delivery status webhook |
+Paystack is stubbed in `lib/paystack/index.ts`. When you're ready to enable paid plans, implement the `PaystackClient` interface and wire it up to the `/subscription` page button. The `users` table already has a `provider_customer_id` column ready for the customer reference.
