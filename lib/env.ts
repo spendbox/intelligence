@@ -21,4 +21,6 @@ export const env = {
   trialDays: () => parseInt(optional("TRIAL_DAYS", "30"), 10),
   paystackSecret: () => required("PAYSTACK_SECRET_KEY"),
   paystackSecretSafe: () => process.env.PAYSTACK_SECRET_KEY ?? "",
+  openaiKey: () => required("OPENAI_API_KEY"),
+  openaiModel: () => optional("OPENAI_MODEL", "gpt-4o-mini"),
 };

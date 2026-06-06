@@ -10,11 +10,20 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
     .select("id, slug, name, description, active")
     .order("name");
 
+  const { data: subs } = await sb.from("user_categories").select("category_id");
+  const subsByCategory = (subs ?? []).reduce<Record<string, number>>((acc, row) => {
+    acc[row.category_id] = (acc[row.category_id] ?? 0) + 1;
+    return acc;
+  }, {});
+  const totalSubs = Object.values(subsByCategory).reduce((a, b) => a + b, 0);
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Categories</h1>
-        <p className="mt-1 text-sm text-slate-600">Add, edit, or disable insight categories.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Add, edit, or disable industries. {totalSubs} total category subscriptions across all users.
+        </p>
       </div>
 
       {searchParams.saved && (
@@ -72,6 +81,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Slug</th>
                 <th className="px-4 py-2">Description</th>
+                <th className="px-4 py-2">Subscribers</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2"></th>
               </tr>
@@ -82,6 +92,11 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                   <td className="px-4 py-2 font-medium">{c.name}</td>
                   <td className="px-4 py-2 font-mono text-xs text-slate-500">{c.slug}</td>
                   <td className="px-4 py-2 text-slate-600">{c.description ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      {(subsByCategory[c.id] ?? 0).toLocaleString()}
+                    </span>
+                  </td>
                   <td className="px-4 py-2">
                     <span
                       className={
@@ -113,7 +128,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
               ))}
               {(!categories || categories.length === 0) && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={6}>
                     No categories yet.
                   </td>
                 </tr>

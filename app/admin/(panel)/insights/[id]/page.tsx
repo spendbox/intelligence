@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
   deleteDraftAction,
+  polishDraftAction,
   scheduleDraftAction,
   sendDraftNowAction,
   updateDraftAction,
@@ -12,7 +13,7 @@ export default async function AdminInsightPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { saved?: string; scheduled?: string; sent?: string };
+  searchParams: { saved?: string; scheduled?: string; sent?: string; polished?: string; generated?: string; error?: string };
 }) {
   const sb = supabaseAdmin();
   const { data: draft } = await sb
@@ -55,6 +56,26 @@ export default async function AdminInsightPage({
       {searchParams.saved && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>}
       {searchParams.scheduled && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Scheduled.</p>}
       {searchParams.sent && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Sent.</p>}
+      {searchParams.polished && <p className="rounded-md bg-brand/10 px-3 py-2 text-sm text-brand-dark">AI polished this draft.</p>}
+      {searchParams.generated && <p className="rounded-md bg-brand/10 px-3 py-2 text-sm text-brand-dark">AI generated this draft — review and edit before sending.</p>}
+      {searchParams.error === "ai" && (
+        <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">AI request failed. Check OPENAI_API_KEY and try again.</p>
+      )}
+
+      {!isSent && (
+        <form action={polishDraftAction} className="rounded-2xl border border-slate-200 bg-gradient-to-br from-brand/[0.04] to-fuchsia-50 p-4">
+          <input type="hidden" name="id" value={draft.id} />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Polish with AI</h2>
+              <p className="mt-0.5 text-xs text-slate-600">Rewrite this draft to be sharper, more scannable and more actionable.</p>
+            </div>
+            <button className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">
+              Polish
+            </button>
+          </div>
+        </form>
+      )}
 
       <form action={updateDraftAction} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
         <input type="hidden" name="id" value={draft.id} />
