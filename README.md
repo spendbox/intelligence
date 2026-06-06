@@ -48,6 +48,8 @@ Copy `.env.example` → `.env.local` for local dev (and set the same values in *
 | `ADMIN_PASSWORD` | The plain password you'll use to sign into `/admin` |
 | `CRON_SECRET` | Any random string. Generate with: `openssl rand -hex 32` |
 | `PAYSTACK_SECRET_KEY` | From Paystack dashboard → Settings → API Keys & Webhooks (use **test** key while testing). Required only when payments are enabled in admin. |
+| `OPENAI_API_KEY` | From https://platform.openai.com/api-keys. Required only when using the "Generate with AI" / "Polish with AI" buttons in admin. |
+| `OPENAI_MODEL` | Optional, defaults to `gpt-4o-mini`. |
 | `APP_URL` | `http://localhost:3000` for dev, your Vercel URL (or `https://folio.cafe`) in prod |
 | `TRIAL_DAYS` | Optional, defaults to `30` |
 

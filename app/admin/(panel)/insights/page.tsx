@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { createDraftAction, deleteDraftAction } from "./actions";
+import { createDraftAction, deleteDraftAction, generateDraftAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,35 @@ export default async function AdminInsightsPage() {
         <StatCard label="Scheduled drafts" value={scheduledCount ?? 0} />
         <StatCard label="Deliveries" value={deliveryCount ?? 0} />
       </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-gradient-to-br from-brand/[0.04] to-fuchsia-50 p-5 shadow-sm sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Generate with AI</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Pick an industry — OpenAI drafts a full insight email you can edit and send.
+            </p>
+          </div>
+          <span className="hidden rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand sm:inline">
+            powered by OpenAI
+          </span>
+        </div>
+        <form action={generateDraftAction} className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <select
+            name="category_id"
+            required
+            className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2"
+          >
+            <option value="">Select an industry…</option>
+            {(categories ?? []).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <button className="rounded-lg bg-brand px-4 py-2 font-medium text-white hover:bg-brand-dark">
+            Generate draft
+          </button>
+        </form>
+      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-base font-semibold">New insight</h2>

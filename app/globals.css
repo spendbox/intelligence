@@ -56,3 +56,10 @@ summary { list-style: none; cursor: pointer; }
 summary::-webkit-details-marker { display: none; }
 details[open] > summary .menu-open-hide { display: none; }
 details:not([open]) > summary .menu-open-show { display: none; }
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 45s linear infinite; }
+.animate-marquee:hover { animation-play-state: paused; }

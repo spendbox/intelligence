@@ -6,6 +6,7 @@ import { getAdminSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { renderMarkdown, wrapEmailHtml } from "@/lib/markdown";
 import { sendInsightEmail } from "@/lib/email/resend";
+import { generateInsight, polishDraft } from "@/lib/openai";
 
 const DraftSchema = z.object({
   category_id: z.string().uuid(),
@@ -77,6 +78,82 @@ export async function scheduleDraftAction(formData: FormData) {
     .update({ status: "scheduled", scheduled_for: new Date(when).toISOString() })
     .eq("id", id);
   redirect(`/admin/insights/${id}?scheduled=1`);
+}
+
+export async function generateDraftAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const categoryId = String(formData.get("category_id") ?? "");
+  if (!categoryId) redirect("/admin/insights?error=no_category");
+
+  const sb = supabaseAdmin();
+  const { data: cat } = await sb
+    .from("categories")
+    .select("id, name, description")
+    .eq("id", categoryId)
+    .single();
+  if (!cat) redirect("/admin/insights?error=no_category");
+
+  let generated;
+  try {
+    generated = await generateInsight({ industryName: cat.name, industryDescription: cat.description });
+  } catch (e: any) {
+    redirect(`/admin/insights?error=ai&msg=${encodeURIComponent(String(e?.message ?? "AI failed"))}`);
+  }
+
+  const body_html = wrapEmailHtml(generated.subject, renderMarkdown(generated.body_md));
+  const { data, error } = await sb
+    .from("insight_drafts")
+    .insert({
+      category_id: cat.id,
+      subject: generated.subject,
+      body_md: generated.body_md,
+      body_html,
+      status: "draft",
+      created_by: admin,
+    })
+    .select("id")
+    .single();
+  if (error || !data) redirect("/admin/insights?error=server");
+  redirect(`/admin/insights/${data.id}?generated=1`);
+}
+
+export async function polishDraftAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/admin/insights");
+
+  const sb = supabaseAdmin();
+  const { data: draft } = await sb
+    .from("insight_drafts")
+    .select("id, subject, body_md, category_id, status, categories(name)")
+    .eq("id", id)
+    .single();
+  if (!draft || draft.status === "sent") redirect(`/admin/insights/${id}`);
+
+  const industryName = (draft as any).categories?.name ?? "general";
+  let polished;
+  try {
+    polished = await polishDraft({
+      industryName,
+      subject: draft.subject,
+      body_md: draft.body_md,
+    });
+  } catch (e: any) {
+    redirect(`/admin/insights/${id}?error=ai&msg=${encodeURIComponent(String(e?.message ?? "AI failed"))}`);
+  }
+
+  const body_html = wrapEmailHtml(polished.subject, renderMarkdown(polished.body_md));
+  await sb
+    .from("insight_drafts")
+    .update({
+      subject: polished.subject,
+      body_md: polished.body_md,
+      body_html,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  redirect(`/admin/insights/${id}?polished=1`);
 }
 
 export async function deleteDraftAction(formData: FormData) {
