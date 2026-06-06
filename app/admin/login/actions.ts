@@ -1,12 +1,19 @@
 "use server";
 
-import bcrypt from "bcryptjs";
+import { timingSafeEqual } from "crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { getAdminSession } from "@/lib/auth/session";
 
 const Schema = z.object({ email: z.string().email(), password: z.string().min(1) });
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 export async function adminLoginAction(formData: FormData) {
   const parsed = Schema.safeParse({
@@ -16,10 +23,11 @@ export async function adminLoginAction(formData: FormData) {
   if (!parsed.success) redirect("/admin/login?error=1");
 
   const expectedEmail = env.adminEmail().toLowerCase();
-  if (parsed.data.email !== expectedEmail) redirect("/admin/login?error=1");
+  const expectedPassword = env.adminPassword();
 
-  const ok = await bcrypt.compare(parsed.data.password, env.adminPasswordHash());
-  if (!ok) redirect("/admin/login?error=1");
+  const emailOk = safeEqual(parsed.data.email, expectedEmail);
+  const passwordOk = safeEqual(parsed.data.password, expectedPassword);
+  if (!emailOk || !passwordOk) redirect("/admin/login?error=1");
 
   const session = await getAdminSession();
   session.email = expectedEmail;
