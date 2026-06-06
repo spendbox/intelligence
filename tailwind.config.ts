@@ -6,9 +6,16 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#4f46e5",
-          dark: "#4338ca",
+          DEFAULT: "#7c3aed",
+          dark: "#6d28d9",
+          light: "#a78bfa",
         },
+        ink: {
+          DEFAULT: "#0b0b15",
+        },
+      },
+      fontFamily: {
+        sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
       },
     },
   },

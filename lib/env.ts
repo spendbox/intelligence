@@ -19,4 +19,6 @@ export const env = {
   cronSecret: () => required("CRON_SECRET"),
   appUrl: () => optional("APP_URL", "http://localhost:3000"),
   trialDays: () => parseInt(optional("TRIAL_DAYS", "30"), 10),
+  paystackSecret: () => required("PAYSTACK_SECRET_KEY"),
+  paystackSecretSafe: () => process.env.PAYSTACK_SECRET_KEY ?? "",
 };

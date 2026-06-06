@@ -19,7 +19,7 @@ export default function LoginPage({
               Account created — enter your email to get a login code.
             </p>
           )}
-          <p className="mt-2 text-sm text-slate-600">We'll email you a 4-digit code.</p>
+          <p className="mt-2 text-sm text-slate-600">We'll email you a 4-digit code from <span className="font-medium">notifications@folio.cafe</span>.</p>
 
           <form action={sendPinAction} className="mt-5 space-y-3">
             <input

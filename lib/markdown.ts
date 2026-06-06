@@ -57,7 +57,7 @@ export function wrapEmailHtml(subject: string, bodyHtml: string): string {
       <h1 style="font-size:22px;margin:0 0 16px">${subject.replace(/</g, "&lt;")}</h1>
       <div style="line-height:1.6">${bodyHtml}</div>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="color:#64748b;font-size:12px;margin:0">You received this because you're subscribed to Intelligence insights for this category.</p>
+      <p style="color:#64748b;font-size:12px;margin:0">You received this because you're subscribed to this category on Folio (folio.cafe).</p>
     </div>
   </body></html>`;
 }
