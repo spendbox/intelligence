@@ -53,8 +53,8 @@ export default function HomePage({ searchParams }: { searchParams: { error?: str
           </h1>
 
           <p className="animate-fade-up delay-200 mt-5 max-w-lg text-lg text-white/70 sm:text-xl">
-            Stay ahead of the competition. Get monthly business intelligence hand-picked for the
-            categories that matter to you.
+            Stay ahead of the competition. Up to <span className="font-semibold text-white">10 actionable insights</span>{" "}
+            delivered to your inbox every month, picked for the categories that matter to you.
           </p>
 
           <form

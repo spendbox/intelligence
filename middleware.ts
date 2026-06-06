@@ -17,7 +17,7 @@ export function middleware(req: NextRequest) {
   }
 
   // User app routes
-  const userProtected = ["/dashboard", "/categories", "/subscription"];
+  const userProtected = ["/dashboard", "/categories", "/subscription", "/account"];
   if (userProtected.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     if (!req.cookies.get(USER_COOKIE)) {
       const url = req.nextUrl.clone();
@@ -30,5 +30,11 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/categories/:path*", "/subscription/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/dashboard/:path*",
+    "/categories/:path*",
+    "/subscription/:path*",
+    "/account/:path*",
+  ],
 };

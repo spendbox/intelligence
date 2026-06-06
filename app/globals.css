@@ -51,3 +51,8 @@ body {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
 }
+
+summary { list-style: none; cursor: pointer; }
+summary::-webkit-details-marker { display: none; }
+details[open] > summary .menu-open-hide { display: none; }
+details:not([open]) > summary .menu-open-show { display: none; }

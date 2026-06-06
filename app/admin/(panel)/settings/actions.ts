@@ -8,9 +8,13 @@ import { setSetting } from "@/lib/settings";
 const Schema = z.object({
   paystack_enabled: z.coerce.boolean(),
   currency: z.string().min(3).max(8),
-  price_monthly_kobo: z.coerce.number().int().min(0),
-  price_yearly_kobo: z.coerce.number().int().min(0),
+  price_monthly: z.coerce.number().min(0).finite(),
+  price_yearly: z.coerce.number().min(0).finite(),
 });
+
+function toMinorUnit(value: number): number {
+  return Math.round(value * 100);
+}
 
 export async function saveSettingsAction(formData: FormData) {
   const session = await getAdminSession();
@@ -19,16 +23,16 @@ export async function saveSettingsAction(formData: FormData) {
   const parsed = Schema.safeParse({
     paystack_enabled: formData.get("paystack_enabled") === "on",
     currency: formData.get("currency") ?? "NGN",
-    price_monthly_kobo: formData.get("price_monthly_kobo") ?? 0,
-    price_yearly_kobo: formData.get("price_yearly_kobo") ?? 0,
+    price_monthly: formData.get("price_monthly") ?? 0,
+    price_yearly: formData.get("price_yearly") ?? 0,
   });
   if (!parsed.success) redirect("/admin/settings");
 
   await Promise.all([
     setSetting("paystack_enabled", parsed.data.paystack_enabled),
     setSetting("currency", parsed.data.currency),
-    setSetting("price_monthly_kobo", parsed.data.price_monthly_kobo),
-    setSetting("price_yearly_kobo", parsed.data.price_yearly_kobo),
+    setSetting("price_monthly_kobo", toMinorUnit(parsed.data.price_monthly)),
+    setSetting("price_yearly_kobo", toMinorUnit(parsed.data.price_yearly)),
   ]);
 
   redirect("/admin/settings?saved=1");

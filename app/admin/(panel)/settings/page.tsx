@@ -3,13 +3,17 @@ import { saveSettingsAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+const symbols: Record<string, string> = { NGN: "₦", USD: "$", GHS: "₵", ZAR: "R", KES: "KSh" };
+
 export default async function AdminSettingsPage({ searchParams }: { searchParams: { saved?: string } }) {
   const s = await getSettings();
+  const monthly = (s.price_monthly_kobo / 100).toFixed(2);
+  const yearly = (s.price_yearly_kobo / 100).toFixed(2);
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-slate-600">Payment configuration and pricing.</p>
       </div>
 
@@ -17,7 +21,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Settings saved.</p>
       )}
 
-      <form action={saveSettingsAction} className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
+      <form action={saveSettingsAction} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
           <div>
             <p className="font-medium">Paystack payments</p>
@@ -42,7 +46,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           <select
             name="currency"
             defaultValue={s.currency}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
           >
             <option value="NGN">NGN (₦)</option>
             <option value="USD">USD ($)</option>
@@ -54,34 +58,42 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-sm font-medium">Monthly price (smallest unit)</label>
-            <input
-              type="number"
-              name="price_monthly_kobo"
-              min={0}
-              defaultValue={s.price_monthly_kobo}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Kobo / cents (e.g. NGN ₦5,000 = 500000).
-            </p>
+            <label className="text-sm font-medium">Monthly price</label>
+            <div className="mt-1 flex rounded-lg border border-slate-300 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+              <span className="flex items-center px-3 text-slate-500">{symbols[s.currency] ?? s.currency}</span>
+              <input
+                type="number"
+                name="price_monthly"
+                step="0.01"
+                min="0"
+                required
+                defaultValue={monthly}
+                inputMode="decimal"
+                className="w-full rounded-r-lg px-3 py-2 outline-none"
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-500">e.g. 5000.99</p>
           </div>
           <div>
-            <label className="text-sm font-medium">Yearly price (smallest unit)</label>
-            <input
-              type="number"
-              name="price_yearly_kobo"
-              min={0}
-              defaultValue={s.price_yearly_kobo}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Kobo / cents (e.g. NGN ₦50,000 = 5000000).
-            </p>
+            <label className="text-sm font-medium">Yearly price</label>
+            <div className="mt-1 flex rounded-lg border border-slate-300 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+              <span className="flex items-center px-3 text-slate-500">{symbols[s.currency] ?? s.currency}</span>
+              <input
+                type="number"
+                name="price_yearly"
+                step="0.01"
+                min="0"
+                required
+                defaultValue={yearly}
+                inputMode="decimal"
+                className="w-full rounded-r-lg px-3 py-2 outline-none"
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-500">e.g. 50000.00</p>
           </div>
         </div>
 
-        <button className="rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-brand-dark">
+        <button className="rounded-lg bg-brand px-4 py-2 font-medium text-white hover:bg-brand-dark">
           Save settings
         </button>
       </form>

@@ -48,7 +48,9 @@ export default async function SubscriptionPage({
 
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Current status</p>
-        <p className="mt-1 text-lg font-semibold capitalize">{user?.status}</p>
+        <p className="mt-1 text-lg font-semibold">
+          {user?.status === "trialing" ? "Free Trial" : user?.status === "active" || subActive ? "Active" : user?.status}
+        </p>
         {trialing && user?.trial_ends_at && (
           <p className="mt-1 text-sm text-slate-600">
             Free trial ends on {new Date(user.trial_ends_at).toLocaleDateString()}.
