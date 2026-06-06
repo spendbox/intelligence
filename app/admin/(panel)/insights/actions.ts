@@ -79,6 +79,15 @@ export async function scheduleDraftAction(formData: FormData) {
   redirect(`/admin/insights/${id}?scheduled=1`);
 }
 
+export async function deleteDraftAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/admin/insights");
+  const sb = supabaseAdmin();
+  await sb.from("insight_drafts").delete().eq("id", id);
+  redirect("/admin/insights");
+}
+
 export async function sendDraftNowAction(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");

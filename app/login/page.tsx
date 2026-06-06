@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { sendPinAction } from "./actions";
+import { continueLoginAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const errors: Record<string, string> = {
+  invalid_email: "Please enter a valid email address.",
+  unknown_email: "We couldn't find that email. Sign up first.",
+  email_failed: "We couldn't send the email. Please try again.",
+  expired: "That session expired. Sign in again.",
+};
 
 export default function LoginPage({
   searchParams,
@@ -16,12 +23,12 @@ export default function LoginPage({
           <h1 className="text-2xl font-bold">Sign in</h1>
           {searchParams.new && (
             <p className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-              Account created — enter your email to get a login code.
+              Account created — enter your email to continue.
             </p>
           )}
-          <p className="mt-2 text-sm text-slate-600">We'll email you a 4-digit code from <span className="font-medium">notifications@folio.cafe</span>.</p>
+          <p className="mt-2 text-sm text-slate-600">We will email you a 4 digit code.</p>
 
-          <form action={sendPinAction} className="mt-5 space-y-3">
+          <form action={continueLoginAction} className="mt-5 space-y-3">
             <input
               type="email"
               name="email"
@@ -33,15 +40,13 @@ export default function LoginPage({
               className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
             <button className="w-full rounded-xl bg-brand px-4 py-3 text-base font-semibold text-white hover:bg-brand-dark">
-              Send code
+              Continue
             </button>
           </form>
 
           {searchParams.error && (
             <p className="mt-3 text-sm text-rose-600">
-              {searchParams.error === "unknown_email"
-                ? "We couldn't find that email. Sign up first."
-                : "Something went wrong. Try again."}
+              {errors[searchParams.error] ?? "Something went wrong. Try again."}
             </p>
           )}
 

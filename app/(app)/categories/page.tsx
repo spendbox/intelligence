@@ -2,7 +2,7 @@ import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { saveCategoriesAction } from "./actions";
 
-export default async function CategoriesPage({ searchParams }: { searchParams: { saved?: string } }) {
+export default async function CategoriesPage({ searchParams }: { searchParams: { saved?: string; welcome?: string } }) {
   const session = await getUserSession();
   const sb = supabaseAdmin();
 
@@ -23,8 +23,14 @@ export default async function CategoriesPage({ searchParams }: { searchParams: {
     <div>
       <h1 className="text-2xl font-bold">Categories</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Choose which monthly insights you want to receive.
+        Choose which monthly insights you want to receive — up to 10 sent each month.
       </p>
+
+      {searchParams.welcome && (
+        <p className="mt-4 rounded-md bg-brand/5 px-3 py-2 text-sm text-slate-700">
+          Welcome to Folio! Pick the categories you care about to start receiving insights.
+        </p>
+      )}
 
       {searchParams.saved && (
         <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
