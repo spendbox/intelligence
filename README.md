@@ -89,9 +89,27 @@ Visit http://localhost:3000.
 
 ### How emails go out
 - Admin schedules a draft for a date/time.
-- Vercel Cron hits `/api/cron/send-insights` every 15 minutes.
-- The route finds drafts whose `scheduled_for <= now()`, builds the recipient list (all `trialing`/`active` users subscribed to that draft's category), sends each via Resend, and inserts an `email_deliveries` row per recipient.
+- Vercel Cron hits `/api/cron/send-insights` **once a day at 09:00 UTC** (Hobby-tier compatible — Hobby only allows daily crons). The route finds drafts whose `scheduled_for <= now()`, builds the recipient list (all `trialing`/`active` users subscribed to that draft's category), sends each via Resend, and inserts an `email_deliveries` row per recipient.
 - Resend's webhook posts back delivery events → `email_deliveries.status` updates.
+- **Need sub-daily granularity?** Two options without upgrading: (a) use the **Send now** button in `/admin/insights/[id]` for ad-hoc dispatches, or (b) add an external scheduler (GitHub Actions, cron-job.org, EasyCron) that hits `GET https://YOUR-URL/api/cron/send-insights` with header `Authorization: Bearer $CRON_SECRET` on whatever schedule you want. A ready-to-use GitHub Actions workflow:
+  ```yaml
+  # .github/workflows/cron-insights.yml
+  name: cron-insights
+  on:
+    schedule:
+      - cron: "*/15 * * * *"
+    workflow_dispatch:
+  jobs:
+    ping:
+      runs-on: ubuntu-latest
+      steps:
+        - run: |
+            curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/send-insights"
+          env:
+            CRON_SECRET: ${{ secrets.CRON_SECRET }}
+            APP_URL: ${{ secrets.APP_URL }}
+  ```
+  Add `CRON_SECRET` and `APP_URL` as repo secrets in **GitHub → Settings → Secrets and variables → Actions**.
 
 ## Payments
 
