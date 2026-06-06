@@ -1,6 +1,6 @@
-# Intelligence
+# Folio
 
-Monthly business intelligence emails for small businesses.
+Monthly business intelligence emails for small businesses. Live at [folio.cafe](https://folio.cafe).
 
 ## Stack
 
@@ -30,7 +30,7 @@ Monthly business intelligence emails for small businesses.
 2. **Domains → Add domain**, add the domain you want to send from (e.g. `yourdomain.com`). Add the DNS records Resend shows you (SPF/DKIM). Wait until it shows "Verified".
    - For local testing, you can skip this and use Resend's `onboarding@resend.dev` sender — emails will only deliver to the email address you signed up with.
 3. **API Keys → Create API Key** (full access). Copy it → this is `RESEND_API_KEY`.
-4. Set `RESEND_FROM_EMAIL` to something like `Intelligence <hello@yourdomain.com>` (or `onboarding@resend.dev` for testing).
+4. Set `RESEND_FROM_EMAIL` to `Folio <notifications@folio.cafe>` (or `onboarding@resend.dev` for testing).
 5. (Optional, after deploy) **Webhooks → Add Endpoint** pointing at `https://YOUR-VERCEL-URL/api/webhooks/resend` so delivery statuses appear in the admin "Deliveries" page.
 
 ## 3. Set environment variables
@@ -47,7 +47,8 @@ Copy `.env.example` → `.env.local` for local dev (and set the same values in *
 | `ADMIN_EMAIL` | The email you'll use to sign into `/admin` |
 | `ADMIN_PASSWORD` | The plain password you'll use to sign into `/admin` |
 | `CRON_SECRET` | Any random string. Generate with: `openssl rand -hex 32` |
-| `APP_URL` | `http://localhost:3000` for dev, your Vercel URL in prod |
+| `PAYSTACK_SECRET_KEY` | From Paystack dashboard → Settings → API Keys & Webhooks (use **test** key while testing). Required only when payments are enabled in admin. |
+| `APP_URL` | `http://localhost:3000` for dev, your Vercel URL (or `https://folio.cafe`) in prod |
 | `TRIAL_DAYS` | Optional, defaults to `30` |
 
 ## 4. Run locally
@@ -111,6 +112,14 @@ Visit http://localhost:3000.
   ```
   Add `CRON_SECRET` and `APP_URL` as repo secrets in **GitHub → Settings → Secrets and variables → Actions**.
 
-## Payments
+## Payments (Paystack)
 
-Paystack is stubbed in `lib/paystack/index.ts`. When you're ready to enable paid plans, implement the `PaystackClient` interface and wire it up to the `/subscription` page button. The `users` table already has a `provider_customer_id` column ready for the customer reference.
+Paystack is wired in via the redirect-based "Standard" flow.
+
+1. Get your `PAYSTACK_SECRET_KEY` from Paystack → Settings → API Keys & Webhooks and add it to Vercel env.
+2. In `/admin/settings`, flip the **Paystack payments** toggle on and set the monthly + yearly prices.
+   - Prices are entered in the smallest unit of the chosen currency (kobo for NGN, cents for USD, etc.). Example: NGN ₦5,000/month → `500000`.
+3. On `/subscription`, users now see two plans. Clicking either initializes a Paystack transaction and redirects them to checkout.
+4. After payment, Paystack redirects back to `/api/paystack/callback?reference=…`, the route verifies the transaction, updates `users.status = 'active'`, `users.subscription_plan`, and extends `users.subscription_ends_at` (by 30 or 365 days). Successful payments are recorded in the `payments` table.
+
+Set Paystack's "Callback URL" in their dashboard to `https://YOUR-URL/api/paystack/callback` (also passed per-transaction).
