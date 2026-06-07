@@ -2,27 +2,25 @@ import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/settings";
-import { startTopupAction } from "./actions";
-import { nairaToCredits, TOPUP_MIN_NAIRA, TOPUP_MAX_NAIRA, formatNaira, formatCredits, MIN_NOTIFICATION_CREDITS } from "@/lib/leads";
-import { SubmitButton } from "@/components/SubmitButton";
+import TopUpForm from "./TopUpForm";
+import { formatNaira, formatCredits, MIN_NOTIFICATION_CREDITS, TOPUP_MAX_NAIRA, TOPUP_MIN_NAIRA } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
-const QUICK = [1000, 5000, 10000, 50000, 100000, 500000];
-
 export default async function WalletPage({ searchParams }: { searchParams: { status?: string; reason?: string } }) {
   const session = await getUserSession();
+  if (!session.userId) redirect("/login");
   const sb = supabaseAdmin();
   const settings = await getSettings();
   const npc = settings.naira_per_credit || 10;
 
-  const { data: wallet } = await sb.from("wallets").select("credits, total_topup_naira").eq("user_id", session.userId!).maybeSingle();
+  const { data: wallet } = await sb.from("wallets").select("credits, total_topup_naira").eq("user_id", session.userId).maybeSingle();
   const credits = Number(wallet?.credits ?? 0);
 
   const { data: tx } = await sb
     .from("wallet_transactions")
     .select("id, delta, reason, naira_amount, reference, created_at")
-    .eq("user_id", session.userId!)
+    .eq("user_id", session.userId)
     .order("created_at", { ascending: false })
     .limit(20);
 
@@ -50,41 +48,12 @@ export default async function WalletPage({ searchParams }: { searchParams: { sta
         <p className="text-xs text-slate-600">credits · worth ~{formatNaira(credits * npc)}</p>
         {credits < MIN_NOTIFICATION_CREDITS && (
           <p className="mt-2 text-xs text-amber-700">
-            You need at least {MIN_NOTIFICATION_CREDITS} credits to receive lead notifications.
+            You need at least {MIN_NOTIFICATION_CREDITS} credit to receive lead notifications.
           </p>
         )}
       </div>
 
-      <form action={startTopupAction} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold">Top up</h2>
-        <p className="text-xs text-slate-500">Minimum {formatNaira(TOPUP_MIN_NAIRA)} · maximum {formatNaira(TOPUP_MAX_NAIRA)}.</p>
-        <div className="flex flex-wrap gap-2">
-          {QUICK.map((amt) => (
-            <button
-              key={amt}
-              type="submit"
-              name="amount"
-              value={amt}
-              className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >
-              {formatNaira(amt)} · +{formatCredits(nairaToCredits(amt, npc))} credits
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 flex gap-2">
-          <input
-            type="number"
-            name="amount"
-            min={TOPUP_MIN_NAIRA}
-            max={TOPUP_MAX_NAIRA}
-            placeholder="Custom amount (₦)"
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-          <SubmitButton pendingLabel="Redirecting to Paystack…">
-            Top up
-          </SubmitButton>
-        </div>
-      </form>
+      <TopUpForm nairaPerCredit={npc} minNaira={TOPUP_MIN_NAIRA} maxNaira={TOPUP_MAX_NAIRA} />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold">Recent activity</h2>
@@ -95,8 +64,8 @@ export default async function WalletPage({ searchParams }: { searchParams: { sta
                 <p className="font-medium capitalize">{t.reason}</p>
                 <p className="text-xs text-slate-500">{new Date(t.created_at).toLocaleString()}</p>
               </div>
-              <p className={"text-sm font-semibold " + (t.delta >= 0 ? "text-emerald-700" : "text-rose-700")}>
-                {t.delta >= 0 ? "+" : ""}{t.delta.toLocaleString()} credits
+              <p className={"text-sm font-semibold " + (Number(t.delta) >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                {Number(t.delta) >= 0 ? "+" : ""}{formatCredits(Number(t.delta))} credits
               </p>
             </li>
           ))}

@@ -18,7 +18,8 @@ export function nairaToCredits(naira: number, nairaPerCredit = DEFAULT_NAIRA_PER
 
 export function unlockCreditsFor(budgetMax: number, rate = DEFAULT_UNLOCK_RATE): number {
   const raw = budgetMax * rate;
-  return Math.max(1, Math.round(raw * 100) / 100);
+  // No min / max — admin's rate determines everything.
+  return Math.max(0, Math.round(raw * 100) / 100);
 }
 
 export function formatCredits(n: number): string {

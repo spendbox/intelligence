@@ -8,7 +8,6 @@ type Initial = {
   business_name: string;
   display_name: string;
   phone: string;
-  cac_number: string;
   bio: string;
   slug: string;
   website: string;
@@ -20,13 +19,45 @@ type Initial = {
   whatsapp: string;
 };
 
+const COUNTRY_CODES = [
+  { code: "+234", flag: "🇳🇬", name: "Nigeria" },
+  { code: "+233", flag: "🇬🇭", name: "Ghana" },
+  { code: "+254", flag: "🇰🇪", name: "Kenya" },
+  { code: "+27", flag: "🇿🇦", name: "South Africa" },
+  { code: "+44", flag: "🇬🇧", name: "UK" },
+  { code: "+1", flag: "🇺🇸", name: "US" },
+];
+
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: number } | { kind: "error"; msg: string };
+
+// Split a WhatsApp E.164 string into its country code + local part.
+function splitWhatsapp(value: string): { country: string; local: string } {
+  const v = String(value || "").trim();
+  if (!v) return { country: "+234", local: "" };
+  for (const c of COUNTRY_CODES) {
+    if (v.startsWith(c.code)) return { country: c.code, local: v.slice(c.code.length).replace(/[^\d]/g, "") };
+  }
+  if (v.startsWith("+")) return { country: "+234", local: v.replace(/[^\d]/g, "") };
+  return { country: "+234", local: v.replace(/[^\d]/g, "") };
+}
+
+function splitPhone(value: string) {
+  return splitWhatsapp(value);
+}
 
 export default function ProfileForm({ initial, publicBase }: { initial: Initial; publicBase: string }) {
   const [values, setValues] = useState<Initial>(initial);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ignoreFirst = useRef(true);
+
+  const phoneSplit = splitPhone(values.phone);
+  const [phoneCountry, setPhoneCountry] = useState(phoneSplit.country);
+  const [phoneLocal, setPhoneLocal] = useState(phoneSplit.local);
+
+  const waSplit = splitWhatsapp(values.whatsapp);
+  const [waCountry, setWaCountry] = useState(waSplit.country);
+  const [waLocal, setWaLocal] = useState(waSplit.local);
 
   useEffect(() => {
     if (ignoreFirst.current) {
@@ -68,6 +99,17 @@ export default function ProfileForm({ initial, publicBase }: { initial: Initial;
     setValues((prev) => ({ ...prev, [key]: v }));
   }
 
+  function setPhoneFromInputs(country: string, local: string) {
+    setPhoneCountry(country);
+    setPhoneLocal(local);
+    update("phone", local ? `${country}${local}` : "");
+  }
+  function setWaFromInputs(country: string, local: string) {
+    setWaCountry(country);
+    setWaLocal(local);
+    update("whatsapp", local ? `${country}${local}` : "");
+  }
+
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
@@ -78,8 +120,14 @@ export default function ProfileForm({ initial, publicBase }: { initial: Initial;
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Business name" value={values.business_name} onChange={(v) => update("business_name", v)} />
         <Field label="Display name" value={values.display_name} onChange={(v) => update("display_name", v)} />
-        <Field label="Phone" value={values.phone} onChange={(v) => update("phone", v)} />
-        <Field label="CAC number" hint="Optional" value={values.cac_number} onChange={(v) => update("cac_number", v)} />
+        <PhoneField
+          label="Phone"
+          country={phoneCountry}
+          local={phoneLocal}
+          onCountry={(c) => setPhoneFromInputs(c, phoneLocal)}
+          onLocal={(v) => setPhoneFromInputs(phoneCountry, v)}
+          placeholder="8012345678"
+        />
       </div>
 
       <SlugField initial={initial.slug} publicBase={publicBase} value={values.slug} onChange={(v) => update("slug", v)} />
@@ -99,12 +147,19 @@ export default function ProfileForm({ initial, publicBase }: { initial: Initial;
         <p className="mt-1 text-xs text-slate-500">All optional. Will show on your public page.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Website" value={values.website} onChange={(v) => update("website", v)} placeholder="https://yourbusiness.com" />
-          <Field label="Instagram" value={values.instagram} onChange={(v) => update("instagram", v)} placeholder="@handle or full URL" />
-          <Field label="X / Twitter" value={values.twitter} onChange={(v) => update("twitter", v)} placeholder="@handle" />
-          <Field label="TikTok" value={values.tiktok} onChange={(v) => update("tiktok", v)} placeholder="@handle" />
-          <Field label="Facebook" value={values.facebook} onChange={(v) => update("facebook", v)} />
-          <Field label="LinkedIn" value={values.linkedin} onChange={(v) => update("linkedin", v)} />
-          <Field label="WhatsApp" value={values.whatsapp} onChange={(v) => update("whatsapp", v)} placeholder="+234…" />
+          <Field label="Instagram" value={values.instagram} onChange={(v) => update("instagram", v)} placeholder="@yourbusiness" />
+          <Field label="X / Twitter" value={values.twitter} onChange={(v) => update("twitter", v)} placeholder="@yourbusiness" />
+          <Field label="TikTok" value={values.tiktok} onChange={(v) => update("tiktok", v)} placeholder="@yourbusiness" />
+          <Field label="Facebook" value={values.facebook} onChange={(v) => update("facebook", v)} placeholder="facebook.com/yourbusiness" />
+          <Field label="LinkedIn" value={values.linkedin} onChange={(v) => update("linkedin", v)} placeholder="linkedin.com/company/yourbusiness" />
+          <PhoneField
+            label="WhatsApp"
+            country={waCountry}
+            local={waLocal}
+            onCountry={(c) => setWaFromInputs(c, waLocal)}
+            onLocal={(v) => setWaFromInputs(waCountry, v)}
+            placeholder="8012345678"
+          />
         </div>
       </div>
 
@@ -138,6 +193,49 @@ function Field({
         placeholder={placeholder}
         className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
       />
+    </div>
+  );
+}
+
+function PhoneField({
+  label,
+  country,
+  local,
+  onCountry,
+  onLocal,
+  placeholder,
+}: {
+  label: string;
+  country: string;
+  local: string;
+  onCountry: (c: string) => void;
+  onLocal: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium">{label}</label>
+      <div className="mt-1 flex rounded-lg border border-slate-300 focus-within:ring-2 focus-within:ring-brand/20">
+        <select
+          value={country}
+          onChange={(e) => onCountry(e.target.value)}
+          aria-label="Country code"
+          className="rounded-l-lg bg-white px-2 py-2 text-sm outline-none"
+        >
+          {COUNTRY_CODES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.flag} {c.code}
+            </option>
+          ))}
+        </select>
+        <input
+          value={local}
+          onChange={(e) => onLocal(e.target.value.replace(/[^\d]/g, ""))}
+          inputMode="tel"
+          placeholder={placeholder}
+          className="w-full rounded-r-lg px-3 py-2 text-sm outline-none"
+        />
+      </div>
     </div>
   );
 }
