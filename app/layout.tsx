@@ -1,18 +1,26 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const TITLE = "Folio — Get the leads. Close the business.";
+const DESC =
+  "Folio is Nigeria's leads marketplace. Clients post free requests, vetted businesses unlock the contact and reach out. Real customers, no spam, fair pricing.";
+
 export const metadata: Metadata = {
-  title: "Folio — The unfair advantage your business needs",
-  description:
-    "Monthly business intelligence for small businesses. Stay ahead of the competition.",
+  title: TITLE,
+  description: DESC,
   metadataBase: new URL("https://folio.cafe"),
+  themeColor: "#7c3aed",
   openGraph: {
-    title: "Folio — The unfair advantage your business needs",
-    description:
-      "Monthly business intelligence for small businesses. Stay ahead of the competition.",
+    title: TITLE,
+    description: DESC,
     url: "https://folio.cafe",
     siteName: "Folio",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESC,
   },
 };
 

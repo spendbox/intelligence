@@ -1,29 +1,23 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { IndustryIcon } from "@/lib/industryIcons";
+import { LogoMark } from "@/lib/logo";
+import { getSettings } from "@/lib/settings";
+import { formatNaira } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
-const EXAMPLE_INSIGHTS = [
-  { tag: "Real Estate", title: "3 emerging neighborhoods up 18% in rental demand" },
-  { tag: "E-commerce", title: "5 product categories quietly outperforming this quarter" },
-  { tag: "Food", title: "How a 2-item menu cut delivery costs by 30%" },
-  { tag: "Tech & SaaS", title: "The pricing tweak that lifts MRR by 12%" },
-  { tag: "Education", title: "7 partnerships parents asked for last month" },
-  { tag: "Health", title: "Insurance changes you should act on this month" },
-  { tag: "Fashion", title: "Trends moving 4x faster on TikTok than Instagram" },
-  { tag: "Logistics", title: "Routes where fuel costs dropped 22%" },
-  { tag: "Finance", title: "Lending terms tightening — what to do before Q4" },
-  { tag: "Agriculture", title: "Buyers paying premiums for these 3 categories" },
-];
-
-const VALUE_PROPS = [
-  { title: "Actionable insights", body: "Hand-picked, decision-grade information for your industry — never filler." },
-  { title: "New business ideas", body: "Two fresh opportunities you can test in the next 30 days, every month." },
-  { title: "Cut your costs", body: "Specific ways operators in your space are reducing expenses right now." },
-  { title: "Improve your profit", body: "Pricing, retention and upsell tactics tested by businesses like yours." },
-  { title: "Customer leads", body: "Real outreach scripts and example customer emails you can copy and send." },
-  { title: "Built for time-poor founders", body: "Up to 10 insights, once a month, scannable in 5 minutes." },
+const EXAMPLE_LEADS = [
+  { tag: "Real Estate", title: "3-bedroom apartment in Lekki Phase 1 · ₦5–8m/yr" },
+  { tag: "Photography", title: "Wedding shoot in Abuja, Nov 23 · ₦400k–₦700k" },
+  { tag: "Tech & SaaS", title: "Custom CRM for a fintech sales team · ₦1.5m+" },
+  { tag: "Food & Beverage", title: "Corporate lunch catering for 80 people · ₦600k–₦900k" },
+  { tag: "Logistics", title: "Weekly Lagos-Ibadan haulage contract · ₦2m+/mo" },
+  { tag: "Education", title: "After-school tutor for SS2 maths · ₦80k/mo" },
+  { tag: "Fashion", title: "Bespoke aso-ebi for a 40-person bridal party · ₦1.5m" },
+  { tag: "Health", title: "Family clinic looking for medical equipment supplier · ₦3m+" },
+  { tag: "Agriculture", title: "Bulk poultry feed supply, Ogun · ₦4m+/mo" },
+  { tag: "Hospitality", title: "Event venue for 200 in PH · ₦800k–₦1.2m" },
 ];
 
 async function loadIndustries() {
@@ -31,7 +25,7 @@ async function loadIndustries() {
     const sb = supabaseAdmin();
     const { data } = await sb
       .from("categories")
-      .select("slug, name, description")
+      .select("id, slug, name, description")
       .eq("active", true)
       .order("name");
     return data ?? [];
@@ -40,180 +34,454 @@ async function loadIndustries() {
   }
 }
 
-export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
-  const industries = await loadIndustries();
-  const marqueeList = [...EXAMPLE_INSIGHTS, ...EXAMPLE_INSIGHTS];
+async function loadStats() {
+  try {
+    const sb = supabaseAdmin();
+    const [biz, req] = await Promise.all([
+      sb.from("businesses").select("*", { count: "exact", head: true }).eq("setup_complete", true),
+      sb.from("lead_requests").select("*", { count: "exact", head: true }).eq("status", "approved"),
+    ]);
+    return { businesses: biz.count ?? 0, requests: req.count ?? 0 };
+  } catch {
+    return { businesses: 0, requests: 0 };
+  }
+}
+
+export default async function HomePage() {
+  const [industries, stats, settings] = await Promise.all([loadIndustries(), loadStats(), getSettings()]);
+  const marquee = [...EXAMPLE_LEADS, ...EXAMPLE_LEADS];
+  const creditNaira = settings.naira_per_credit || 10;
+  const sampleUnlock = Math.max(1, Math.floor(100_000 * (settings.unlock_rate || 0.00001)));
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-ink text-white">
-      {/* Background blobs */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-32 -left-20 h-[420px] w-[420px] rounded-full bg-brand/40 blur-3xl animate-float-slow" />
-        <div className="absolute top-1/3 -right-24 h-[460px] w-[460px] rounded-full bg-fuchsia-500/30 blur-3xl animate-float-slower" />
-        <div className="absolute -bottom-32 left-1/4 h-[380px] w-[380px] rounded-full bg-indigo-500/30 blur-3xl animate-float-slow" />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,.6) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-      </div>
-
-      <div className="mx-auto flex max-w-3xl flex-col px-5 py-8 sm:py-12">
-        {/* Header */}
-        <header className="flex items-center justify-between animate-fade-in">
-          <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <span className="inline-block h-6 w-6 rounded-md bg-gradient-to-br from-brand to-fuchsia-400 shadow-[0_0_20px_rgba(124,58,237,0.6)]" />
+    <main className="bg-ink text-white">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-30 border-b border-white/5 bg-ink/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
+          <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <LogoMark className="h-7 w-7" />
             Folio
           </Link>
-          <Link
-            href="/login"
-            className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-medium text-white/90 backdrop-blur transition hover:bg-white/10"
-          >
-            Sign in
-          </Link>
-        </header>
+          <nav className="flex items-center gap-2 text-sm sm:gap-4">
+            <a href="#how-it-works" className="hidden text-white/70 hover:text-white sm:inline">How it works</a>
+            <a href="#industries" className="hidden text-white/70 hover:text-white sm:inline">Industries</a>
+            <a href="#faq" className="hidden text-white/70 hover:text-white sm:inline">FAQ</a>
+            <Link
+              href="/login"
+              className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur transition hover:bg-white/10 sm:text-sm"
+            >
+              Sign in
+            </Link>
+          </nav>
+        </div>
+      </header>
 
-        {/* Hero */}
-        <section className="mt-14 sm:mt-20">
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -top-32 -left-20 h-[460px] w-[460px] rounded-full bg-brand/40 blur-3xl animate-float-slow" />
+          <div className="absolute top-1/3 -right-24 h-[500px] w-[500px] rounded-full bg-fuchsia-500/30 blur-3xl animate-float-slower" />
+          <div className="absolute -bottom-32 left-1/3 h-[420px] w-[420px] rounded-full bg-indigo-500/30 blur-3xl animate-float-slow" />
+          <div
+            className="absolute inset-0 opacity-[0.06]"
+            style={{
+              backgroundImage: "radial-gradient(rgba(255,255,255,.6) 1px, transparent 1px)",
+              backgroundSize: "22px 22px",
+            }}
+          />
+        </div>
+
+        <div className="mx-auto max-w-4xl px-5 pb-24 pt-16 sm:pt-24">
           <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-light opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-light" />
             </span>
-            Built for small businesses
+            Built for Nigeria · folio.cafe
           </div>
 
-          <h1 className="animate-fade-up delay-100 mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
+          <h1 className="animate-fade-up delay-100 mt-6 text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
             Get the leads.{" "}
             <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
               Close the business.
             </span>
           </h1>
 
-          <p className="animate-fade-up delay-200 mt-5 max-w-xl text-lg text-white/70 sm:text-xl">
-            Folio is where customers post what they need — and trusted businesses in their industry, area and budget reach out directly.
+          <p className="animate-fade-up delay-200 mt-5 max-w-2xl text-balance text-lg text-white/70 sm:text-xl">
+            Folio is the marketplace where Nigerian customers post what they need, and trusted businesses in
+            their industry, area and budget reach out directly. Real customers. No spam. Fair pricing.
           </p>
 
-          <div className="animate-fade-up delay-300 mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="animate-fade-up delay-300 mt-9 grid gap-3 sm:grid-cols-2">
             <Link
               href="/order"
-              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-fuchsia-500 p-5 shadow-[0_10px_30px_-10px_rgba(124,58,237,0.8)] transition hover:shadow-[0_18px_40px_-10px_rgba(124,58,237,1)]"
+              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-fuchsia-500 p-5 shadow-[0_18px_40px_-12px_rgba(124,58,237,0.7)] transition hover:shadow-[0_24px_50px_-12px_rgba(124,58,237,1)]"
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">Looking for a service?</p>
-              <p className="mt-2 text-lg font-bold text-white">Post a request →</p>
-              <p className="mt-1 text-sm text-white/80">Free. Tell us what you need, get matched with vetted businesses.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">Looking for a service?</p>
+              <p className="mt-2 text-xl font-bold text-white">Post a request →</p>
+              <p className="mt-1 text-sm text-white/80">Free. Tell us what you need; vetted businesses come to you.</p>
+              <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-500 group-hover:translate-x-0" />
             </Link>
             <Link
               href="/login"
-              className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md transition hover:bg-white/10"
+              className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md transition hover:border-white/30 hover:bg-white/10"
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Run a business?</p>
-              <p className="mt-2 text-lg font-bold text-white">Get leads →</p>
-              <p className="mt-1 text-sm text-white/60">Sign up free. Unlock contact details with credits when leads match.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Run a business?</p>
+              <p className="mt-2 text-xl font-bold text-white">Get vetted leads →</p>
+              <p className="mt-1 text-sm text-white/65">
+                Sign up, complete compliance, get matched leads in your industry & area.
+              </p>
             </Link>
           </div>
 
-          {searchParams.error && (
-            <p className="animate-fade-up mt-4 rounded-md bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-              {searchParams.error === "invalid_email"
-                ? "Please enter a valid email address."
-                : "Something went wrong. Please try again."}
-            </p>
-          )}
-        </section>
-
-        {/* Insight examples marquee */}
-        <section className="animate-fade-up delay-500 mt-16">
-          <div className="flex items-end justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
-              What lands in your inbox
-            </h2>
-            <span className="text-xs text-white/40">Examples</span>
+          <div className="animate-fade-up delay-500 mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-white/60">
+            <Stat value={`${industries.length}`} label="industries" />
+            <Stat value={`${stats.businesses.toLocaleString()}+`} label="businesses" />
+            <Stat value="Up to 10" label="businesses per request" />
+            <Stat value="100%" label="Nigeria-built" />
           </div>
-          <div className="relative mt-3 overflow-hidden">
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-ink to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-ink to-transparent" />
-            <div className="flex w-max gap-3 animate-marquee">
-              {marqueeList.map((ex, i) => (
-                <article
-                  key={i}
-                  className="w-72 shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-light">{ex.tag}</p>
-                  <p className="mt-2 text-sm font-medium leading-snug text-white">{ex.title}</p>
-                </article>
-              ))}
+        </div>
+
+        {/* Insight marquee */}
+        <div className="animate-fade-up delay-500 border-y border-white/5 bg-white/[0.02] py-6">
+          <div className="mx-auto max-w-6xl px-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              Real requests landing in inboxes right now
+            </p>
+            <div className="relative mt-3 overflow-hidden">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-ink to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-ink to-transparent" />
+              <div className="flex w-max gap-3 animate-marquee">
+                {marquee.map((ex, i) => (
+                  <article
+                    key={i}
+                    className="w-72 shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md"
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-light">{ex.tag}</p>
+                    <p className="mt-2 text-sm font-medium leading-snug text-white">{ex.title}</p>
+                  </article>
+                ))}
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Value props */}
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">More than a newsletter.</h2>
-          <p className="mt-2 max-w-xl text-white/60">
-            Every month you get more than insights. You get the moves that save you money and grow you.
-          </p>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-            {VALUE_PROPS.map((v) => (
-              <li
-                key={v.title}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.06]"
-              >
-                <p className="text-sm font-semibold text-white">{v.title}</p>
-                <p className="mt-1 text-sm text-white/60">{v.body}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {/* HOW IT WORKS — light section */}
+      <section id="how-it-works" className="bg-white text-slate-900">
+        <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">How Folio works</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Two sides. One simple loop.</h2>
+            <p className="mt-3 text-base text-slate-600 sm:text-lg">
+              Whether you need a service or run a business that provides one, Folio gets you to the deal faster.
+            </p>
+          </div>
 
-        {/* Industries */}
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Pick your industry.</h2>
-          <p className="mt-2 max-w-xl text-white/60">
-            Folio is built around the industry you actually operate in. Subscribe to as many as you'd like.
-          </p>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-14 grid gap-8 lg:grid-cols-2">
+            <FlowCard
+              eyebrow="For customers"
+              title="Get matched in minutes"
+              cta={{ href: "/order", label: "Post a free request →" }}
+              steps={[
+                { n: 1, title: "Post what you need", body: "Describe it, set a budget range and location. AI auto-tags the industry." },
+                { n: 2, title: "Verify with a code", body: "One email, one 4-digit code. No account or password to manage." },
+                { n: 3, title: "Sit back and pick", body: "Up to 10 vetted businesses in your area reach out. You choose your favourite." },
+              ]}
+            />
+            <FlowCard
+              eyebrow="For businesses"
+              title="Real leads. Pay only to unlock."
+              accent
+              cta={{ href: "/login", label: "Start receiving leads →" }}
+              steps={[
+                { n: 1, title: "Sign up + compliance", body: "Free. Submit standard docs (CAC RC/BN or NIN) and get verified." },
+                { n: 2, title: "Get matched", body: "We send you leads that match your industry, location and budget range." },
+                { n: 3, title: "Unlock and close", body: `Spend credits to reveal the client's contact. From ${sampleUnlock} credit on a ${formatNaira(100_000)} brief.` },
+              ]}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* TRUST */}
+      <section className="bg-slate-50 text-slate-900">
+        <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Why Folio</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built for trust, not noise.</h2>
+            <p className="mt-3 text-base text-slate-600 sm:text-lg">
+              Every part of the flow is designed to keep customer signal high and business spam low.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            <TrustCard
+              title="Verified businesses"
+              body="Compliance review against standard Nigerian docs — CAC RC/BN, NIN, government ID — before the badge."
+            />
+            <TrustCard
+              title="Exclusive matches"
+              body="Only 10 businesses can unlock a single request. No spam piles. Higher response rates."
+            />
+            <TrustCard
+              title="Pay-as-you-go"
+              body={`Buy credits when you need them. 1 credit = ${formatNaira(creditNaira)}. Unlock cost scales with the lead's budget.`}
+            />
+            <TrustCard
+              title="Curated by humans"
+              body="Every request is admin-reviewed before it goes out to businesses. Quality over volume."
+            />
+            <TrustCard
+              title="Mobile-first"
+              body="Built to work everywhere your customers actually browse. Fast on 4G, beautiful on every screen."
+            />
+            <TrustCard
+              title="Your own page"
+              body="Each business gets a public Folio page with logo, gallery and socials at folio.cafe/b/your-name."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* INDUSTRIES */}
+      <section id="industries" className="bg-white text-slate-900">
+        <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Industries we serve</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Whatever you do, you fit.</h2>
+            <p className="mt-3 text-base text-slate-600 sm:text-lg">
+              Folio is organised around the industries Nigerian businesses actually work in.
+            </p>
+          </div>
+
+          <ul className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {industries.length === 0 ? (
-              <li className="col-span-full rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/60">
+              <li className="col-span-full rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
                 Industries are loading…
               </li>
             ) : (
               industries.map((c: any) => (
                 <li
                   key={c.slug}
-                  className="group flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.07]"
+                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-brand/30 hover:shadow-sm"
                 >
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand/30 to-fuchsia-500/20 text-brand-light ring-1 ring-white/10">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand/15 to-fuchsia-200 text-brand ring-1 ring-brand/10">
                     <IndustryIcon slug={c.slug} className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{c.name}</p>
-                    {c.description && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-white/55">{c.description}</p>
-                    )}
+                    <p className="text-sm font-semibold">{c.name}</p>
+                    {c.description && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{c.description}</p>}
                   </div>
                 </li>
               ))
             )}
           </ul>
-          <div className="mt-8 flex flex-col items-start gap-2">
+        </div>
+      </section>
+
+      {/* PRICING TEASER */}
+      <section className="bg-slate-50 text-slate-900">
+        <div className="mx-auto max-w-4xl px-5 py-20 sm:py-24">
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Pricing</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Free to ask. Fair to provide.</h2>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customers</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight">Always free</p>
+              <p className="mt-2 text-sm text-slate-600">Post requests, compare businesses, choose the best fit. No card, no fees.</p>
+              <Link href="/order" className="mt-5 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                Post a request →
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/[0.06] to-fuchsia-50 p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Businesses</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight">Pay as you unlock</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Top up your wallet from {formatNaira(1000)}. 1 credit = {formatNaira(creditNaira)}. Most leads cost ~{sampleUnlock}–{Math.max(1, sampleUnlock * 10)} credits depending on budget.
+              </p>
+              <Link href="/login" className="mt-5 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
+                Get started →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="bg-white text-slate-900">
+        <div className="mx-auto max-w-3xl px-5 py-20 sm:py-24">
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">FAQ</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Common questions</h2>
+          </div>
+          <div className="mt-10 space-y-3">
+            <Faq q="How does Folio choose which businesses get my request?">
+              We match by industry, the locations a business serves and their budget bracket. Up to 10 verified
+              businesses get notified — first come, first reveal.
+            </Faq>
+            <Faq q="Is my contact info safe?">
+              Your email and phone are hidden until a business uses credits to unlock them. The unlock cap of 10
+              means your inbox never floods.
+            </Faq>
+            <Faq q="What does compliance involve?">
+              Standard Nigerian docs: CAC RC/BN + certificate for businesses, NIN for individuals, plus a
+              government ID, a logo and one gallery image. It's a short checklist on /business/compliance.
+            </Faq>
+            <Faq q="Do I need a subscription as a business?">
+              No. You only pay when you unlock a lead. Credits don't expire and our admin sets the rate
+              transparently.
+            </Faq>
+            <Faq q="What if no one responds?">
+              Tell us — we'll route your request to more businesses ourselves. Customers always come first.
+            </Faq>
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA — back to dark */}
+      <section className="relative overflow-hidden bg-ink text-white">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -top-20 left-1/3 h-[360px] w-[360px] rounded-full bg-brand/30 blur-3xl animate-float-slow" />
+          <div className="absolute bottom-0 right-1/4 h-[300px] w-[300px] rounded-full bg-fuchsia-500/25 blur-3xl animate-float-slower" />
+        </div>
+        <div className="mx-auto max-w-3xl px-5 py-20 text-center sm:py-28">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
+            Stop chasing.{" "}
+            <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
+              Start closing.
+            </span>
+          </h2>
+          <p className="mt-4 text-base text-white/70 sm:text-lg">
+            Whether you're hiring or selling, Folio gets you to the deal faster.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/order"
               className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-ink shadow-[0_10px_30px_-10px_rgba(255,255,255,0.4)] transition hover:bg-white/90"
             >
-              Post your request — it's free →
+              Post a free request →
             </Link>
-            <p className="text-xs text-white/40">No account needed. Email-verified in under a minute.</p>
+            <Link
+              href="/login"
+              className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
+            >
+              Sign up as a business
+            </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <footer className="mt-20 flex items-center justify-between border-t border-white/5 pt-6 text-xs text-white/40">
-          <span>© {new Date().getFullYear()} Folio</span>
-          <span>folio.cafe</span>
-        </footer>
-      </div>
+      {/* Footer */}
+      <footer className="border-t border-white/5 bg-ink py-10 text-sm text-white/50">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-5 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <LogoMark className="h-5 w-5" />
+            <span className="text-white/80">Folio</span>
+            <span className="text-white/30">·</span>
+            <span>folio.cafe</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <a href="#how-it-works" className="hover:text-white">How it works</a>
+            <a href="#industries" className="hover:text-white">Industries</a>
+            <a href="#faq" className="hover:text-white">FAQ</a>
+            <Link href="/order" className="hover:text-white">Post a request</Link>
+            <Link href="/login" className="hover:text-white">Sign in</Link>
+          </div>
+          <span className="text-white/30">© {new Date().getFullYear()} Folio</span>
+        </div>
+      </footer>
     </main>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="text-base font-semibold text-white">{value}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function FlowCard({
+  eyebrow,
+  title,
+  steps,
+  cta,
+  accent = false,
+}: {
+  eyebrow: string;
+  title: string;
+  steps: { n: number; title: string; body: string }[];
+  cta: { href: string; label: string };
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "rounded-3xl border p-6 shadow-sm sm:p-8 " +
+        (accent ? "border-brand/30 bg-gradient-to-br from-brand/[0.05] to-fuchsia-50" : "border-slate-200 bg-white")
+      }
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{eyebrow}</p>
+      <h3 className="mt-2 text-2xl font-bold tracking-tight">{title}</h3>
+      <ol className="mt-6 space-y-5">
+        {steps.map((s) => (
+          <li key={s.n} className="flex gap-4">
+            <span
+              className={
+                "grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold " +
+                (accent
+                  ? "bg-brand text-white shadow-[0_0_0_4px_rgba(124,58,237,0.12)]"
+                  : "bg-slate-900 text-white")
+              }
+            >
+              {s.n}
+            </span>
+            <div>
+              <p className="font-semibold">{s.title}</p>
+              <p className="mt-1 text-sm text-slate-600">{s.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <Link
+        href={cta.href}
+        className={
+          "mt-7 inline-flex rounded-xl px-4 py-2.5 text-sm font-semibold transition " +
+          (accent ? "bg-brand text-white hover:bg-brand-dark" : "bg-slate-900 text-white hover:bg-slate-800")
+        }
+      >
+        {cta.label}
+      </Link>
+    </div>
+  );
+}
+
+function TrustCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-brand/30 hover:shadow-sm">
+      <p className="text-base font-semibold tracking-tight">{title}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{body}</p>
+    </div>
+  );
+}
+
+function Faq({ q, children }: { q: string; children: React.ReactNode }) {
+  return (
+    <details className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-brand/30">
+      <summary className="flex cursor-pointer items-center justify-between gap-4">
+        <span className="text-base font-semibold">{q}</span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 transition group-open:bg-brand group-open:text-white">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5 transition group-open:rotate-180">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
+      </summary>
+      <p className="mt-3 text-sm leading-relaxed text-slate-600">{children}</p>
+    </details>
   );
 }
