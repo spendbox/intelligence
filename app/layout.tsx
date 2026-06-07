@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import NavProgress from "@/components/NavProgress";
 
-const TITLE = "Folio — Get the leads. Close the business.";
+const TITLE = "Folio — Get the leads. Close the Deal.";
 const DESC =
   "Folio is Nigeria's leads marketplace. Clients post free requests, vetted businesses unlock the contact and reach out. Real customers, no spam, fair pricing.";
 
@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESC,
   metadataBase: new URL("https://folio.cafe"),
-  themeColor: "#7c3aed",
   openGraph: {
     title: TITLE,
     description: DESC,
@@ -23,6 +22,10 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESC,
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#7c3aed",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

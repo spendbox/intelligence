@@ -173,27 +173,41 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
   const wantPriority = !!parsed.data.is_priority && parsed.data.budget_max > 1_000_000;
   const priorityAmount = wantPriority ? parsed.data.priority_amount ?? 0 : 0;
 
-  const { data: created, error } = await sb
-    .from("lead_requests")
-    .insert({
-      email: parsed.data.email,
-      name: parsed.data.name,
-      phone: parsed.data.phone,
-      description: parsed.data.description,
-      category_id: parsed.data.category_id ?? null,
-      budget_min: parsed.data.budget_min,
-      budget_max: parsed.data.budget_max,
-      location: parsed.data.location,
-      status: "submitted",
-      unlock_credits: unlockCredits,
-      unlocks_cap: UNLOCK_CAP_DEFAULT,
-      is_priority: wantPriority,
-      priority_amount_naira: wantPriority ? priorityAmount : null,
-      terms_accepted_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-  if (error || !created) return { ok: false, error: "Couldn't save the request." };
+  const baseRow: Record<string, any> = {
+    email: parsed.data.email,
+    name: parsed.data.name,
+    phone: parsed.data.phone,
+    description: parsed.data.description,
+    category_id: parsed.data.category_id ?? null,
+    budget_min: parsed.data.budget_min,
+    budget_max: parsed.data.budget_max,
+    location: parsed.data.location,
+    status: "submitted",
+    unlock_credits: unlockCredits,
+    unlocks_cap: UNLOCK_CAP_DEFAULT,
+  };
+  const extras: Record<string, any> = {
+    is_priority: wantPriority,
+    priority_amount_naira: wantPriority ? priorityAmount : null,
+    terms_accepted_at: new Date().toISOString(),
+  };
+
+  let created: { id: string } | null = null;
+  let lastErr: any = null;
+  for (const row of [{ ...baseRow, ...extras }, baseRow]) {
+    const { data, error } = await sb.from("lead_requests").insert(row).select("id").single();
+    if (data) {
+      created = data;
+      break;
+    }
+    lastErr = error;
+    // If a column missing on the first attempt, retry without the new extras.
+    if (!error || !/column .* does not exist/i.test(String(error.message ?? ""))) break;
+  }
+  if (!created) {
+    console.error("[order] insert failed:", lastErr?.message ?? lastErr);
+    return { ok: false, error: `Couldn't save the request${lastErr?.message ? ` — ${lastErr.message}` : ""}.` };
+  }
 
   // Attach uploaded image, if any
   const file = formData.get("image") as File | null;

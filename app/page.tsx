@@ -4,7 +4,7 @@ import { IndustryIcon } from "@/lib/industryIcons";
 import { LogoMark } from "@/lib/logo";
 import { getSettings } from "@/lib/settings";
 import { formatNaira } from "@/lib/leads";
-import { FlowIllustration, HeroIllustration, StackIllustration, WalletIllustration } from "@/lib/illustrations";
+import { HeroIllustration, StackIllustration, WalletIllustration } from "@/lib/illustrations";
 
 export const dynamic = "force-dynamic";
 
@@ -98,15 +98,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-5 pb-24 pt-16 sm:pt-20 lg:pt-24">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
             <div>
-              <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-light opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-light" />
-                </span>
-                folio.cafe · Nigeria's leads marketplace
-              </div>
-
-              <h1 className="animate-fade-up delay-100 mt-6 text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
+              <h1 className="animate-fade-up delay-100 mt-2 text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
                 Get the leads.{" "}
                 <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
                   Close the Deal.
@@ -219,10 +211,6 @@ export default async function HomePage() {
                 { n: 3, title: "Unlock and close", body: `Spend credits to reveal the client's contact. From ${sampleUnlock} credit on a ${formatNaira(100_000)} brief.` },
               ]}
             />
-          </div>
-
-          <div className="mt-16">
-            <FlowIllustration />
           </div>
         </div>
       </section>

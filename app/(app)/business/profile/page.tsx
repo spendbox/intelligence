@@ -82,7 +82,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: { sa
           business_name: business.business_name ?? "",
           display_name: business.display_name ?? "",
           phone: business.phone ?? "",
-          cac_number: business.cac_number ?? "",
           bio: business.bio ?? "",
           slug: business.slug ?? "",
           website: business.website ?? "",

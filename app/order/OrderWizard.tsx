@@ -9,12 +9,56 @@ import { improveDescriptionAction, sendOrderCodeAction, submitOrderAction, sugge
 type Industry = { id: string; slug: string; name: string };
 
 const STEPS = ["About", "Budget", "Where", "Contact", "Verify"] as const;
+const PRIORITY_OPTIONS = [500, 1500, 3000, 5000, 10000];
+const COUNTRIES = [
+  { code: "+234", iso: "NG", flag: "🇳🇬", name: "Nigeria" },
+  { code: "+233", iso: "GH", flag: "🇬🇭", name: "Ghana" },
+  { code: "+254", iso: "KE", flag: "🇰🇪", name: "Kenya" },
+  { code: "+27", iso: "ZA", flag: "🇿🇦", name: "South Africa" },
+  { code: "+44", iso: "GB", flag: "🇬🇧", name: "UK" },
+  { code: "+1", iso: "US", flag: "🇺🇸", name: "US" },
+];
+const MIN_DESC_WORDS = 8;
 
 function formatNaira(n: number) {
   return "₦" + Math.round(n).toLocaleString();
 }
 
-const PRIORITY_OPTIONS = [500, 1500, 3000, 5000, 10000];
+function wordCount(s: string) {
+  return s.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function PhoneInput({ value, onChange, countryCode, onCountry, placeholder = "8012345678" }: {
+  value: string;
+  onChange: (v: string) => void;
+  countryCode: string;
+  onCountry: (code: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex rounded-xl bg-white/5 ring-1 ring-white/10 focus-within:bg-white/10">
+      <select
+        value={countryCode}
+        onChange={(e) => onCountry(e.target.value)}
+        aria-label="Country code"
+        className="rounded-l-xl bg-transparent px-2 py-3 text-sm text-white outline-none"
+      >
+        {COUNTRIES.map((c) => (
+          <option key={c.iso} value={c.code} className="bg-ink">
+            {c.flag} {c.code}
+          </option>
+        ))}
+      </select>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
+        inputMode="tel"
+        placeholder={placeholder}
+        className="w-full rounded-r-xl bg-transparent px-3 py-3 text-base text-white placeholder-white/40 outline-none"
+      />
+    </div>
+  );
+}
 
 export default function OrderWizard({ industries }: { industries: Industry[] }) {
   const router = useRouter();
@@ -26,6 +70,7 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
   const [categoryId, setCategoryId] = useState<string>("");
   const [aiBusy, setAiBusy] = useState(false);
   const [improving, setImproving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [budgetMin, setBudgetMin] = useState<string>("");
   const [budgetMax, setBudgetMax] = useState<string>("");
@@ -33,8 +78,8 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
   const [location, setLocation] = useState("");
 
   const [name, setName] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState("+234");
   const [phone, setPhone] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [isPriority, setIsPriority] = useState(false);
   const [priorityAmount, setPriorityAmount] = useState<number>(1500);
@@ -43,17 +88,20 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
 
   const [email, setEmail] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeResentAt, setCodeResentAt] = useState(0);
   const [code, setCode] = useState("");
 
   const budgetMaxNum = Number(budgetMax) || 0;
   const budgetMinNum = Number(budgetMin) || 0;
   const eligiblePriority = budgetMaxNum > 1_000_000;
+  const descWords = wordCount(description);
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   async function suggestIndustry() {
-    if (description.trim().length < 8) return;
+    if (descWords < MIN_DESC_WORDS) return;
     setAiBusy(true);
     const fd = new FormData();
     fd.set("description", description);
@@ -66,7 +114,7 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
   }
 
   async function improveDescription() {
-    if (description.trim().length < 8) return;
+    if (descWords < MIN_DESC_WORDS) return;
     setImproving(true);
     setError(null);
     const fd = new FormData();
@@ -80,16 +128,22 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
     }
   }
 
-  async function sendCode() {
+  async function sendCode(isResend = false) {
     setError(null);
-    const fd = new FormData();
-    fd.set("email", email);
-    const r = await sendOrderCodeAction(fd);
-    if (!r.ok) {
-      setError(r.error ?? "Couldn't send code.");
-      return;
+    setCodeSending(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", email);
+      const r = await sendOrderCodeAction(fd);
+      if (!r.ok) {
+        setError(r.error ?? "Couldn't send code.");
+        return;
+      }
+      setCodeSent(true);
+      if (isResend) setCodeResentAt(Date.now());
+    } finally {
+      setCodeSending(false);
     }
-    setCodeSent(true);
   }
 
   function submit() {
@@ -97,12 +151,12 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
     start(async () => {
       const fd = new FormData();
       fd.set("description", description);
-      if (categoryId) fd.set("category_id", categoryId);
+      fd.set("category_id", categoryId);
       fd.set("budget_min", String(budgetMinNum));
       fd.set("budget_max", String(budgetMaxNum));
       fd.set("location", location);
       fd.set("name", name);
-      fd.set("phone", phone);
+      fd.set("phone", `${phoneCountry}${phone}`);
       fd.set("email", email);
       fd.set("code", code);
       fd.set("terms", terms ? "on" : "");
@@ -126,7 +180,7 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
   }
 
   const canNext = (() => {
-    if (step === 0) return description.trim().length >= 8;
+    if (step === 0) return descWords >= MIN_DESC_WORDS && !!categoryId;
     if (step === 1) return budgetMaxNum > 0 && budgetMaxNum >= budgetMinNum;
     if (step === 2) return location.trim().length >= 2;
     if (step === 3) return name.trim().length >= 2 && phone.trim().length >= 6;
@@ -180,7 +234,7 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
           {step === 0 && (
             <div>
               <h2 className="text-lg font-semibold">What do you need?</h2>
-              <p className="mt-1 text-sm text-white/60">Describe the product, service or help you're looking for.</p>
+              <p className="mt-1 text-sm text-white/60">Describe the product, service or help you're looking for. {MIN_DESC_WORDS}+ words.</p>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -188,34 +242,58 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
                 placeholder="e.g. Need a 3-bedroom flat in Lekki Phase 1, fully serviced, for 12 months from December."
                 className="mt-3 w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none focus:bg-white/10"
               />
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={improveDescription}
-                  disabled={improving || description.trim().length < 8}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-50"
-                >
-                  {improving && <Spinner />}
-                  {improving ? "Improving…" : "✨ Improve with AI"}
-                </button>
-                <button
-                  type="button"
-                  onClick={suggestIndustry}
-                  disabled={aiBusy || description.trim().length < 8}
-                  className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
-                >
-                  {aiBusy ? "Detecting…" : "Auto-detect industry"}
-                </button>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className={descWords >= MIN_DESC_WORDS ? "text-emerald-300" : "text-white/50"}>
+                  {descWords} / {MIN_DESC_WORDS}+ words
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={improveDescription}
+                    disabled={improving || descWords < MIN_DESC_WORDS}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-50"
+                  >
+                    {improving && <Spinner />}
+                    {improving ? "Improving…" : "✨ Improve with AI"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={suggestIndustry}
+                    disabled={aiBusy || descWords < MIN_DESC_WORDS}
+                    className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+                  >
+                    {aiBusy ? "Detecting…" : "Auto-detect industry"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="text-xs font-medium uppercase tracking-wide text-white/60">Industry <span className="text-rose-300">*</span></label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="flex-1 rounded-lg bg-white/5 px-3 py-2 text-sm text-white outline-none focus:bg-white/10"
+                  required
+                  className="mt-1 w-full rounded-xl bg-white/5 px-3 py-3 text-sm text-white outline-none focus:bg-white/10"
                 >
                   <option value="" className="bg-ink">— Select an industry —</option>
                   {industries.map((c) => (
                     <option key={c.id} value={c.id} className="bg-ink">{c.name}</option>
                   ))}
                 </select>
+                {!categoryId && (
+                  <p className="mt-1 text-xs text-white/50">Industry is required to continue.</p>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <label className="text-xs font-medium uppercase tracking-wide text-white/60">Reference image <span className="text-white/40">(optional)</span></label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                  className="mt-1 block w-full text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                />
+                {imageFile && <p className="mt-1 text-xs text-white/60">{imageFile.name}</p>}
               </div>
             </div>
           )}
@@ -316,22 +394,16 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
                   placeholder="Your name"
                   className="w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none focus:bg-white/10"
                 />
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  inputMode="tel"
-                  placeholder="Phone number"
-                  className="w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none focus:bg-white/10"
-                />
                 <div>
-                  <label className="block text-xs font-medium uppercase tracking-wide text-white/60">Reference image (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                    className="mt-1 block w-full text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
-                  />
-                  {imageFile && <p className="mt-1 text-xs text-white/60">{imageFile.name}</p>}
+                  <label className="block text-xs font-medium uppercase tracking-wide text-white/60">Phone</label>
+                  <div className="mt-1">
+                    <PhoneInput
+                      value={phone}
+                      onChange={setPhone}
+                      countryCode={phoneCountry}
+                      onCountry={setPhoneCountry}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -352,11 +424,12 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
               {!codeSent ? (
                 <button
                   type="button"
-                  onClick={sendCode}
-                  disabled={!/^\S+@\S+\.\S+$/.test(email)}
-                  className="mt-3 w-full rounded-xl bg-white px-4 py-3 text-base font-semibold text-ink hover:bg-white/90 disabled:opacity-50"
+                  onClick={() => sendCode(false)}
+                  disabled={!/^\S+@\S+\.\S+$/.test(email) || codeSending}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-base font-semibold text-ink hover:bg-white/90 disabled:opacity-50"
                 >
-                  Send verification code
+                  {codeSending && <Spinner />}
+                  {codeSending ? "Sending…" : "Send verification code"}
                 </button>
               ) : (
                 <>
@@ -368,9 +441,20 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
                     placeholder="0000"
                     className="mt-3 w-full rounded-xl bg-white/5 px-4 py-3 text-center text-3xl font-semibold tracking-[0.5em] text-white outline-none focus:bg-white/10"
                   />
-                  <button type="button" onClick={sendCode} className="mt-2 text-xs text-white/60 hover:text-white">
-                    Resend code
-                  </button>
+                  <div className="mt-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => sendCode(true)}
+                      disabled={codeSending}
+                      className="inline-flex items-center gap-1.5 text-xs text-white/70 hover:text-white disabled:opacity-50"
+                    >
+                      {codeSending && <Spinner />}
+                      {codeSending ? "Sending…" : "Resend code"}
+                    </button>
+                    {codeResentAt > 0 && Date.now() - codeResentAt < 5000 && (
+                      <span className="text-xs text-emerald-300">Sent ✓</span>
+                    )}
+                  </div>
                 </>
               )}
 
