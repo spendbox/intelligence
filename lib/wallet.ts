@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { nairaToCredits } from "@/lib/leads";
+import { computeCreditsForNaira } from "@/lib/leads";
 
 // Idempotent wallet top-up: keyed by `reference`.
 // Returns { ok: true, credited } when newly applied, { ok: true, credited: 0 } when
@@ -19,7 +19,7 @@ export async function applyTopup(opts: {
     .maybeSingle();
   if (dup) return { ok: true, credited: 0, already: true };
 
-  const credits = nairaToCredits(opts.naira);
+  const credits = await computeCreditsForNaira(opts.naira);
 
   await sb.from("wallets").upsert({ user_id: opts.userId }, { onConflict: "user_id" });
   const { data: w } = await sb

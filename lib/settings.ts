@@ -5,6 +5,8 @@ export type Settings = {
   price_monthly_kobo: number;
   price_yearly_kobo: number;
   currency: string;
+  naira_per_credit: number;
+  unlock_rate: number;
 };
 
 const defaults: Settings = {
@@ -12,6 +14,8 @@ const defaults: Settings = {
   price_monthly_kobo: 500000,
   price_yearly_kobo: 5000000,
   currency: "NGN",
+  naira_per_credit: 10,
+  unlock_rate: 0.00001,
 };
 
 export async function getSettings(): Promise<Settings> {

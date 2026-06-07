@@ -1,19 +1,32 @@
 // Folio leads marketplace helpers — credit math, matching, naira formatting.
+import { getSettings } from "@/lib/settings";
 
 export const KOBO = 100;
-export const CREDIT_PER_NAIRA = 0.1; // ₦10 = 1 credit
-export const UNLOCK_RATE = 0.0001;   // budget * 0.001 / 10 = budget / 10000
+export const DEFAULT_NAIRA_PER_CREDIT = 10;      // ₦10 = 1 credit
+export const DEFAULT_UNLOCK_RATE = 0.00001;       // budget × this = credits
 export const MIN_NOTIFICATION_CREDITS = 500;
 export const UNLOCK_CAP_DEFAULT = 10;
 export const TOPUP_MIN_NAIRA = 1000;
 export const TOPUP_MAX_NAIRA = 1_000_000;
 
-export function nairaToCredits(naira: number): number {
-  return Math.floor(naira * CREDIT_PER_NAIRA);
+// Sync helpers (fallback defaults — used for previews / inputs).
+export function nairaToCredits(naira: number, nairaPerCredit = DEFAULT_NAIRA_PER_CREDIT): number {
+  return Math.max(0, Math.floor(naira / nairaPerCredit));
 }
 
-export function unlockCreditsFor(budgetMax: number): number {
-  return Math.max(1, Math.floor(budgetMax * UNLOCK_RATE));
+export function unlockCreditsFor(budgetMax: number, rate = DEFAULT_UNLOCK_RATE): number {
+  return Math.max(1, Math.floor(budgetMax * rate));
+}
+
+// Async helpers — read live config from app_settings.
+export async function computeCreditsForNaira(naira: number): Promise<number> {
+  const s = await getSettings();
+  return nairaToCredits(naira, s.naira_per_credit || DEFAULT_NAIRA_PER_CREDIT);
+}
+
+export async function computeUnlockCredits(budgetMax: number): Promise<number> {
+  const s = await getSettings();
+  return unlockCreditsFor(budgetMax, s.unlock_rate || DEFAULT_UNLOCK_RATE);
 }
 
 export function formatNaira(naira: number): string {

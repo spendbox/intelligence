@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { generatePin, hashPin, PIN_MAX_ATTEMPTS, PIN_TTL_MINUTES, verifyPin } from "@/lib/auth/pin";
 import { sendBusinessLeadEmail, sendOrderReceivedEmail, sendOrderVerificationEmail, sendAdminNewRequestEmail } from "@/lib/email/leads";
 import { env } from "@/lib/env";
-import { locationsMatch, MIN_NOTIFICATION_CREDITS, unlockCreditsFor, UNLOCK_CAP_DEFAULT, formatBudgetRange } from "@/lib/leads";
+import { locationsMatch, MIN_NOTIFICATION_CREDITS, computeUnlockCredits, UNLOCK_CAP_DEFAULT, formatBudgetRange } from "@/lib/leads";
 
 const SuggestSchema = z.object({ description: z.string().min(5).max(2000) });
 
@@ -124,7 +124,7 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
   await sb.from("order_email_verifications").update({ consumed_at: new Date().toISOString() }).eq("id", row.id);
 
   // Create request
-  const unlockCredits = unlockCreditsFor(parsed.data.budget_max);
+  const unlockCredits = await computeUnlockCredits(parsed.data.budget_max);
   const { data: created, error } = await sb
     .from("lead_requests")
     .insert({

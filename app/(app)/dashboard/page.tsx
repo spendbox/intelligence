@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { MIN_NOTIFICATION_CREDITS, formatBudgetRange } from "@/lib/leads";
+import { getOrigin } from "@/lib/originUrl";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
   const { data: business } = await sb
     .from("businesses")
-    .select("id, display_name, business_name, setup_complete, verified")
+    .select("id, display_name, business_name, setup_complete, verified, slug, logo_url")
     .eq("user_id", session.userId!)
     .maybeSingle();
 
@@ -34,12 +35,52 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     .eq("business_id", business.id);
 
   const eligible = credits >= MIN_NOTIFICATION_CREDITS;
+  const publicUrl = `${getOrigin().replace(/\/$/, "")}/b/${business.slug}`;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{business.business_name || business.display_name || "Welcome"}</h1>
-        <p className="mt-1 text-sm text-slate-600">Your dashboard at a glance.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">{business.business_name || business.display_name || "Welcome"}</h1>
+            {business.verified && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700" title="Verified business">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+                  <path d="M12 2l2.6 2.4 3.5-.5.5 3.5L21 9l-1.6 3.2L21 15l-2.4 1.6.5 3.5-3.5-.5L12 22l-2.6-2.4-3.5.5-.5-3.5L3 15l1.6-3-1.6-3 2.4-1.6-.5-3.5 3.5.5L12 2zM9.5 14.2l5.7-5.7-1.4-1.4-4.3 4.3-2.1-2.1-1.4 1.4 3.5 3.5z" />
+                </svg>
+                Verified
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-slate-600">Your dashboard at a glance.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            {business.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={business.logo_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-sm font-bold text-slate-300">
+                {(business.business_name || "F").slice(0, 1).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Your public page</p>
+            <p className="truncate text-sm font-medium text-slate-800">{publicUrl}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Link href={`/b/${business.slug}`} target="_blank" className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark">
+            View page ↗
+          </Link>
+          <Link href="/business/profile" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            Edit
+          </Link>
+        </div>
       </div>
 
       {searchParams.topup === "success" && (

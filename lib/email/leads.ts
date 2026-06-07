@@ -75,6 +75,20 @@ export async function sendAdminNewRequestEmail(adminTo: string, payload: { id: s
   });
 }
 
+export async function sendBusinessApprovedEmail(to: string, payload: { businessName: string; slug: string }) {
+  return client().emails.send({
+    from: FROM(),
+    to,
+    subject: "Your Folio business is verified",
+    html: shell(
+      `Welcome to the verified club, ${payload.businessName}.`,
+      `<p>Your business has been reviewed and approved on Folio. You now have a <strong>Verified</strong> badge on your public page and lead notifications.</p>
+       <p>Verified businesses build trust faster and unlock priority benefits we're rolling out — first dibs on high-budget leads, featured placement and more.</p>
+       <p><a href="${APP()}/b/${payload.slug}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">View your page →</a></p>`
+    ),
+  });
+}
+
 export async function sendBusinessLeadEmail(to: string, payload: {
   requestId: string;
   industryName: string;
