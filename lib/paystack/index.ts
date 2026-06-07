@@ -42,6 +42,7 @@ export async function verifyTransaction(reference: string): Promise<{
   amount: number;
   currency: string;
   customer?: { email?: string; customer_code?: string };
+  metadata?: Record<string, any>;
 }> {
   const res = await fetch(`${BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Bearer ${env.paystackSecret()}` },
@@ -58,5 +59,6 @@ export async function verifyTransaction(reference: string): Promise<{
     amount: data.amount,
     currency: data.currency,
     customer: { email: data.customer?.email, customer_code: data.customer?.customer_code },
+    metadata: data.metadata ?? undefined,
   };
 }

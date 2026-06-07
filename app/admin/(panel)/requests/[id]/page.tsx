@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { formatBudgetRange } from "@/lib/leads";
@@ -33,7 +34,16 @@ export default async function AdminRequestDetail({ params, searchParams }: { par
           <h1 className="text-2xl font-bold tracking-tight">Request from {r.name}</h1>
           <p className="mt-1 text-sm text-slate-600">{new Date(r.created_at).toLocaleString()}</p>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">{r.status}</span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/requests/${r.id}/preview`}
+            target="_blank"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Preview as business ↗
+          </Link>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">{r.status}</span>
+        </div>
       </div>
 
       {searchParams.ok && (

@@ -73,15 +73,33 @@ export default async function BusinessSetupPage({ searchParams }: { searchParams
         {/* Industries */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold">Industries you serve</h2>
-          <p className="mt-1 text-xs text-slate-500">Pick all that apply.</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <p className="mt-1 text-xs text-slate-500">Pick up to 3 industries.</p>
+          <div id="industries" className="mt-3 grid gap-2 sm:grid-cols-2">
             {(categories ?? []).map((c) => (
-              <label key={c.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
-                <input type="checkbox" name="category" value={c.id} defaultChecked={selectedCats.has(c.id)} className="h-4 w-4 accent-brand" />
+              <label key={c.id} className="industry-row flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm has-[:disabled]:opacity-50 hover:bg-slate-50">
+                <input type="checkbox" name="category" value={c.id} defaultChecked={selectedCats.has(c.id)} className="industry-cb h-4 w-4 accent-brand" />
                 {c.name}
               </label>
             ))}
           </div>
+          <p className="mt-2 text-xs text-slate-500"><span id="industry-count">0</span> / 3 selected</p>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(() => {
+                const root = document.getElementById('industries');
+                if (!root) return;
+                const inputs = root.querySelectorAll('.industry-cb');
+                const counter = document.getElementById('industry-count');
+                const update = () => {
+                  const checked = Array.from(inputs).filter(i => i.checked);
+                  if (counter) counter.textContent = String(checked.length);
+                  inputs.forEach(i => { if (!i.checked) i.disabled = checked.length >= 3; });
+                };
+                inputs.forEach(i => i.addEventListener('change', update));
+                update();
+              })();`,
+            }}
+          />
         </section>
 
         {/* Locations */}

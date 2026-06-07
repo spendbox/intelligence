@@ -6,7 +6,7 @@ import { MIN_NOTIFICATION_CREDITS, formatBudgetRange } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: { topup?: string; amount?: string } }) {
   const session = await getUserSession();
   const sb = supabaseAdmin();
 
@@ -41,6 +41,13 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">{business.business_name || business.display_name || "Welcome"}</h1>
         <p className="mt-1 text-sm text-slate-600">Your dashboard at a glance.</p>
       </div>
+
+      {searchParams.topup === "success" && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          🎉 Top-up successful{searchParams.amount ? ` — ₦${Number(searchParams.amount).toLocaleString()} credited.` : "."}{" "}
+          Your balance is now <strong>{credits.toLocaleString()} credits</strong>.
+        </div>
+      )}
 
       {!eligible && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">

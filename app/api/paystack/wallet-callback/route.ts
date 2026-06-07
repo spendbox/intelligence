@@ -1,59 +1,48 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { verifyTransaction } from "@/lib/paystack";
-import { env } from "@/lib/env";
-import { nairaToCredits } from "@/lib/leads";
+import { applyTopup } from "@/lib/wallet";
+import { getOrigin } from "@/lib/originUrl";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const base = env.appUrl();
-  const reference = req.nextUrl.searchParams.get("reference") || req.nextUrl.searchParams.get("trxref");
-  if (!reference) return NextResponse.redirect(`${base}/business/wallet?status=failed`);
-
-  const sb = supabaseAdmin();
-
-  // Idempotent: if we already credited this reference, just redirect to success.
-  const { data: existing } = await sb.from("wallet_transactions").select("id").eq("reference", reference).maybeSingle();
-  if (existing) return NextResponse.redirect(`${base}/business/wallet?status=success`);
+  const base = getOrigin();
+  const reference =
+    req.nextUrl.searchParams.get("reference") || req.nextUrl.searchParams.get("trxref");
+  if (!reference) return NextResponse.redirect(`${base}/business/wallet?status=failed&reason=noref`);
 
   let v;
   try {
     v = await verifyTransaction(reference);
-  } catch {
-    return NextResponse.redirect(`${base}/business/wallet?status=failed`);
+  } catch (e: any) {
+    console.error("[wallet-callback] verify failed", reference, e?.message);
+    return NextResponse.redirect(`${base}/business/wallet?status=failed&reason=verify`);
   }
-  if (v.status !== "success") return NextResponse.redirect(`${base}/business/wallet?status=failed`);
+  if (v.status !== "success") {
+    return NextResponse.redirect(`${base}/business/wallet?status=failed&reason=status`);
+  }
 
-  // Look up user via the reference convention OR by email.
-  let userId: string | null = null;
-  if (v.customer?.email) {
-    const { data: u } = await sb.from("users").select("id").eq("email", v.customer.email).maybeSingle();
+  const sb = supabaseAdmin();
+  let userId: string | null = (v.metadata as any)?.user_id ?? null;
+  if (!userId && v.customer?.email) {
+    const { data: u } = await sb
+      .from("users")
+      .select("id")
+      .eq("email", v.customer.email)
+      .maybeSingle();
     userId = u?.id ?? null;
   }
-  if (!userId) return NextResponse.redirect(`${base}/business/wallet?status=failed`);
+  if (!userId) {
+    console.error("[wallet-callback] no user resolved", { reference, email: v.customer?.email });
+    return NextResponse.redirect(`${base}/business/wallet?status=failed&reason=nouser`);
+  }
 
   const naira = Math.round(v.amount / 100);
-  const credits = nairaToCredits(naira);
+  const result = await applyTopup({ userId, naira, reference, source: "paystack" });
+  if (!result.ok) {
+    return NextResponse.redirect(`${base}/business/wallet?status=failed&reason=apply`);
+  }
 
-  // Ensure wallet exists, then increment atomically via update.
-  await sb.from("wallets").upsert({ user_id: userId }, { onConflict: "user_id" });
-  const { data: w } = await sb.from("wallets").select("credits, total_topup_naira").eq("user_id", userId).single();
-  await sb
-    .from("wallets")
-    .update({
-      credits: (w?.credits ?? 0) + credits,
-      total_topup_naira: (w?.total_topup_naira ?? 0) + naira,
-    })
-    .eq("user_id", userId);
-
-  await sb.from("wallet_transactions").insert({
-    user_id: userId,
-    delta: credits,
-    reason: "topup",
-    reference,
-    naira_amount: naira,
-  });
-
-  return NextResponse.redirect(`${base}/business/wallet?status=success`);
+  return NextResponse.redirect(`${base}/dashboard?topup=success&amount=${naira}`);
 }
