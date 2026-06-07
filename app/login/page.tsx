@@ -2,6 +2,7 @@ import Link from "next/link";
 import { continueLoginAction } from "./actions";
 import { FlowIllustration } from "@/lib/illustrations";
 import { LogoMark } from "@/lib/logo";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +54,12 @@ export default function LoginPage({
                 placeholder="you@business.com"
                 className="w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none transition focus:bg-white/10 focus:ring-2 focus:ring-brand/40"
               />
-              <button className="w-full rounded-xl bg-gradient-to-br from-brand to-fuchsia-500 px-4 py-3 text-base font-semibold text-white shadow-[0_10px_30px_-10px_rgba(124,58,237,0.7)] transition hover:shadow-[0_18px_40px_-10px_rgba(124,58,237,1)]">
+              <SubmitButton
+                className="w-full bg-gradient-to-br from-brand to-fuchsia-500 px-4 py-3 text-base shadow-[0_10px_30px_-10px_rgba(124,58,237,0.7)]"
+                pendingLabel="Sending code…"
+              >
                 Continue
-              </button>
+              </SubmitButton>
             </form>
 
             {searchParams.error && (

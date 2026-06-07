@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/session";
+import { LogoMark } from "@/lib/logo";
 import { adminLogoutAction } from "../login/actions";
 
 const items = [
@@ -37,7 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="sticky top-0 z-20 border-b border-white/5 bg-ink/95 text-slate-100 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3">
           <Link href="/admin/insights" className="flex items-center gap-2 text-base font-semibold tracking-tight">
-            <span className="inline-block h-5 w-5 rounded bg-gradient-to-br from-brand to-fuchsia-400 shadow-[0_0_20px_rgba(124,58,237,0.55)]" />
+            <LogoMark className="h-6 w-6" />
             Folio
             <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-slate-300">
               Admin

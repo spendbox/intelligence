@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { LogoMark } from "@/lib/logo";
 import { logoutAction } from "../login/actions";
 
 const navItems = [
@@ -38,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
           <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <span className="inline-block h-5 w-5 rounded bg-gradient-to-br from-brand to-fuchsia-400" />
+            <LogoMark className="h-6 w-6" />
             Folio
           </Link>
 

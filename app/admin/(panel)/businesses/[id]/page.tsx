@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { approveComplianceAction, rejectComplianceAction } from "../actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -82,9 +83,9 @@ export default async function AdminBusinessDetail({ params, searchParams }: { pa
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <form action={approveComplianceAction}>
               <input type="hidden" name="id" value={b.id} />
-              <button className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
+              <SubmitButton className="w-full" pendingLabel="Approving…">
                 Approve compliance + grant verification
-              </button>
+              </SubmitButton>
             </form>
             <form action={rejectComplianceAction} className="space-y-2">
               <input type="hidden" name="id" value={b.id} />
@@ -93,9 +94,9 @@ export default async function AdminBusinessDetail({ params, searchParams }: { pa
                 placeholder="Note to business (optional)"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               />
-              <button className="w-full rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50">
+              <SubmitButton variant="danger" className="w-full" pendingLabel="Rejecting…">
                 Reject
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </section>

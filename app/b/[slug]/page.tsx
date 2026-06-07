@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { IndustryIcon } from "@/lib/industryIcons";
 import { SocialIcon, buildSocials } from "@/lib/socials";
+import Gallery from "./Gallery";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -108,11 +109,8 @@ export default async function PublicBusinessPage({ params }: { params: { slug: s
         </div>
 
         {(gallery ?? []).length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {(gallery ?? []).map((g) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={g.id} src={g.url} alt={g.caption ?? ""} className="aspect-square w-full rounded-xl border border-slate-200 object-cover" />
-            ))}
+          <div className="mt-6">
+            <Gallery items={gallery ?? []} />
           </div>
         )}
 

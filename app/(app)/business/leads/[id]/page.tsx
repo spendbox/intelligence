@@ -4,6 +4,7 @@ import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { formatBudgetRange } from "@/lib/leads";
 import { unlockLeadAction } from "../actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +80,12 @@ export default async function BusinessLeadDetail({ params, searchParams }: { par
                   {r.unlocks_count}/{r.unlocks_cap} businesses have unlocked. Your balance: <strong>{credits.toLocaleString()} credits</strong>.
                 </p>
               </div>
-              <button
+              <SubmitButton
                 disabled={capReached || !canAfford}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
+                pendingLabel="Unlocking…"
               >
                 {capReached ? "Cap reached" : canAfford ? `Unlock for ${r.unlock_credits} credits` : `Top up — need ${r.unlock_credits - credits} more`}
-              </button>
+              </SubmitButton>
             </div>
             {!canAfford && !capReached && (
               <Link href="/business/wallet" className="mt-2 inline-block text-xs font-medium text-brand">Go to wallet →</Link>

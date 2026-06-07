@@ -10,6 +10,7 @@ import {
   removeMatchAction,
   sendMatchedEmailsAction,
 } from "../actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -116,9 +117,9 @@ export default async function AdminRequestDetail({
             <input type="hidden" name="id" value={r.id} />
             <h2 className="text-sm font-semibold">Approve</h2>
             <p className="mt-1 text-sm text-slate-600">Mark approved + auto-suggest matches. Emails NOT sent yet.</p>
-            <button className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
+            <SubmitButton className="mt-3" pendingLabel="Approving…">
               Approve request
-            </button>
+            </SubmitButton>
           </form>
           <form action={rejectRequestAction} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <input type="hidden" name="id" value={r.id} />
@@ -128,9 +129,9 @@ export default async function AdminRequestDetail({
               placeholder="Reason (optional)"
               className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
-            <button className="mt-3 rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50">
+            <SubmitButton variant="danger" className="mt-3" pendingLabel="Rejecting…">
               Reject
-            </button>
+            </SubmitButton>
           </form>
         </div>
       )}
@@ -143,9 +144,9 @@ export default async function AdminRequestDetail({
             {pendingCount > 0 && (
               <form action={sendMatchedEmailsAction}>
                 <input type="hidden" name="request_id" value={r.id} />
-                <button className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark">
+                <SubmitButton pendingLabel="Sending emails…">
                   Send emails ({pendingCount} pending)
-                </button>
+                </SubmitButton>
               </form>
             )}
           </div>

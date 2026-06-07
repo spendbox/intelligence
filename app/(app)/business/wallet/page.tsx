@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/settings";
 import { startTopupAction } from "./actions";
 import { nairaToCredits, TOPUP_MIN_NAIRA, TOPUP_MAX_NAIRA, formatNaira, MIN_NOTIFICATION_CREDITS } from "@/lib/leads";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -79,9 +80,9 @@ export default async function WalletPage({ searchParams }: { searchParams: { sta
             placeholder="Custom amount (₦)"
             className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
           />
-          <button className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
+          <SubmitButton pendingLabel="Redirecting to Paystack…">
             Top up
-          </button>
+          </SubmitButton>
         </div>
       </form>
 

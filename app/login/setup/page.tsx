@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createPinAction, verifySetupCodeAction } from "../actions";
 import { getPinSetupSession, PIN_SETUP_MAX_AGE_MS } from "@/lib/auth/session";
+import { LogoMark } from "@/lib/logo";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,13 @@ export default async function SetupPage({
   return (
     <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 px-5 py-10 sm:py-16">
       <div className="mx-auto max-w-md">
-        <Link href="/login" className="text-sm text-slate-500 hover:text-slate-700">← Back</Link>
+        <div className="flex items-center justify-between">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold tracking-tight text-slate-800">
+            <LogoMark className="h-5 w-5" />
+            Folio
+          </Link>
+          <Link href="/login" className="text-sm text-slate-500 hover:text-slate-700">← Back</Link>
+        </div>
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           {!showPinForm ? (
             <>
@@ -55,9 +63,9 @@ export default async function SetupPage({
                   placeholder="0000"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-3xl font-semibold tracking-[0.5em] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                 />
-                <button className="w-full rounded-xl bg-brand px-4 py-3 text-base font-semibold text-white hover:bg-brand-dark">
+                <SubmitButton className="w-full bg-brand px-4 py-3 text-base" pendingLabel="Verifying…">
                   Verify
-                </button>
+                </SubmitButton>
               </form>
             </>
           ) : (
@@ -93,9 +101,9 @@ export default async function SetupPage({
                     className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-2xl font-semibold tracking-[0.5em] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                   />
                 </div>
-                <button className="w-full rounded-xl bg-brand px-4 py-3 text-base font-semibold text-white hover:bg-brand-dark">
+                <SubmitButton className="w-full bg-brand px-4 py-3 text-base" pendingLabel="Saving…">
                   Save PIN & sign in
-                </button>
+                </SubmitButton>
               </form>
             </>
           )}

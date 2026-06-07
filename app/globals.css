@@ -63,3 +63,13 @@ details:not([open]) > summary .menu-open-show { display: none; }
 }
 .animate-marquee { animation: marquee 45s linear infinite; }
 .animate-marquee:hover { animation-play-state: paused; }
+
+@keyframes page-progress {
+  0% { width: 0%; }
+  60% { width: 70%; }
+  100% { width: 92%; }
+}
+.page-progress-bar {
+  width: 0%;
+  animation: page-progress 4s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+}
