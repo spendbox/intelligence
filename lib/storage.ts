@@ -7,18 +7,37 @@ let _ensured = false;
 export async function ensureBucket() {
   if (_ensured) return;
   const sb = supabaseAdmin();
-  const { data, error } = await sb.storage.getBucket(BUCKET);
+
+  const { data, error: getErr } = await sb.storage.getBucket(BUCKET);
   if (data) {
+    if (!data.public) {
+      const { error } = await sb.storage.updateBucket(BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+      });
+      if (error) console.error("[storage] updateBucket failed:", error.message);
+    }
     _ensured = true;
     return;
   }
-  if (error) {
+
+  if (getErr) {
     const { error: createErr } = await sb.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: 5 * 1024 * 1024,
     });
-    if (createErr && !String(createErr.message).toLowerCase().includes("already exists")) {
-      throw createErr;
+    if (createErr) {
+      const msg = String(createErr.message ?? "").toLowerCase();
+      if (!msg.includes("already exists") && !msg.includes("duplicate")) {
+        console.error("[storage] createBucket failed:", createErr.message);
+        throw createErr;
+      }
+      // Bucket already exists — force public.
+      const { error: upErr } = await sb.storage.updateBucket(BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+      });
+      if (upErr) console.error("[storage] updateBucket (after exists) failed:", upErr.message);
     }
   }
   _ensured = true;
@@ -36,8 +55,12 @@ export async function uploadFile(opts: {
   const { error } = await sb.storage.from(BUCKET).upload(opts.path, bytes, {
     contentType: opts.file.type || "application/octet-stream",
     upsert: true,
+    cacheControl: "3600",
   });
-  if (error) throw error;
+  if (error) {
+    console.error("[storage] upload failed:", opts.path, error.message);
+    throw error;
+  }
   const { data } = sb.storage.from(BUCKET).getPublicUrl(opts.path);
   return { path: opts.path, publicUrl: data.publicUrl };
 }

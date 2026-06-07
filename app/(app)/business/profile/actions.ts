@@ -65,8 +65,8 @@ export async function saveProfileAction(formData: FormData) {
 export async function uploadLogoAction(formData: FormData) {
   const { sb, biz } = await requireBusiness();
   const file = formData.get("logo") as File | null;
-  if (!file || !(file instanceof File) || file.size === 0) redirect("/business/profile?error=invalid");
-  if (file.size > 5 * 1024 * 1024) redirect("/business/profile?error=invalid");
+  if (!file || !(file instanceof File) || file.size === 0) redirect("/business/profile?error=upload");
+  if (file.size > 5 * 1024 * 1024) redirect("/business/profile?error=upload");
 
   const ext = extensionOf(file, "png");
   const path = `businesses/${biz.id}/logo-${Date.now()}.${ext}`;
@@ -80,7 +80,7 @@ export async function uploadLogoAction(formData: FormData) {
     await sb.from("businesses").update({ logo_url: up.publicUrl }).eq("id", biz.id);
   } catch (e: any) {
     console.error("[uploadLogo]", e?.message);
-    redirect("/business/profile?error=invalid");
+    redirect("/business/profile?error=upload");
   }
   redirect("/business/profile?saved=1");
 }
@@ -100,7 +100,7 @@ const GALLERY_CAP = 12;
 export async function uploadGalleryAction(formData: FormData) {
   const { sb, biz } = await requireBusiness();
   const files = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length === 0) redirect("/business/profile?error=invalid");
+  if (files.length === 0) redirect("/business/profile?error=upload");
 
   const { count } = await sb
     .from("business_gallery")
