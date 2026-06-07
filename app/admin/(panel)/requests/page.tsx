@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { formatBudgetRange } from "@/lib/leads";
+import { deleteRequestAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-export default async function AdminRequestsPage({ searchParams }: { searchParams: { status?: string } }) {
+export default async function AdminRequestsPage({ searchParams }: { searchParams: { status?: string; ok?: string } }) {
   const sb = supabaseAdmin();
   const status = (searchParams.status ?? "submitted") as string;
   let q = sb
@@ -40,6 +41,10 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           {pending ?? 0} awaiting review · {approved ?? 0} live
         </p>
       </div>
+
+      {searchParams.ok === "deleted" && (
+        <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">Request deleted.</p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {["submitted", "approved", "rejected", "all"].map((s) => (
@@ -79,9 +84,17 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
                 <td className="px-4 py-2.5"><StatusPill status={r.status} /></td>
                 <td className="px-4 py-2.5 text-slate-600">{r.unlocks_count} / 10</td>
                 <td className="px-4 py-2.5 text-right">
-                  <Link href={`/admin/requests/${r.id}`} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                    Open
-                  </Link>
+                  <div className="flex justify-end gap-2">
+                    <Link href={`/admin/requests/${r.id}`} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                      Open
+                    </Link>
+                    <form action={deleteRequestAction}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <button className="rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}

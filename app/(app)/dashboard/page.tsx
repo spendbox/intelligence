@@ -13,7 +13,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
   const { data: business } = await sb
     .from("businesses")
-    .select("id, display_name, business_name, setup_complete, verified, slug, logo_url")
+    .select("id, display_name, business_name, setup_complete, verified, slug, logo_url, compliance_status")
     .eq("user_id", session.userId!)
     .maybeSingle();
 
@@ -90,6 +90,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         </div>
       )}
 
+      <ComplianceCard status={business.compliance_status ?? "unsubmitted"} verified={!!business.verified} />
+
       {!eligible && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           You need at least <strong>{MIN_NOTIFICATION_CREDITS} credits</strong> to start receiving lead notifications.{" "}
@@ -140,6 +142,86 @@ function Stat({ label, value, hint }: { label: string; value: string; hint: stri
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-1 text-2xl font-bold tracking-tight">{value}</p>
       <p className="text-xs text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
+function ComplianceCard({ status, verified }: { status: string; verified: boolean }) {
+  if (verified) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+              <path d="M12 2l2.6 2.4 3.5-.5.5 3.5L21 9l-1.6 3.2L21 15l-2.4 1.6.5 3.5-3.5-.5L12 22l-2.6-2.4-3.5.5-.5-3.5L3 15l1.6-3-1.6-3 2.4-1.6-.5-3.5 3.5.5L12 2zM9.5 14.2l5.7-5.7-1.4-1.4-4.3 4.3-2.1-2.1-1.4 1.4 3.5 3.5z" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">You're verified</p>
+            <p className="text-xs text-emerald-700/80">Verified businesses get priority matches and the trust badge on your public page.</p>
+          </div>
+        </div>
+        <Link href="/business/compliance" className="text-sm font-medium text-emerald-700 hover:text-emerald-900">View details →</Link>
+      </div>
+    );
+  }
+  if (status === "pending") {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-amber-700">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-amber-900">Compliance is under review</p>
+            <p className="text-xs text-amber-800/80">We'll email you the moment it's approved. You can still receive leads in the meantime.</p>
+          </div>
+        </div>
+        <Link href="/business/compliance" className="text-sm font-medium text-amber-800 hover:text-amber-900">Check status →</Link>
+      </div>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-rose-100 text-rose-700">!</span>
+          <div>
+            <p className="text-sm font-semibold text-rose-800">Compliance was rejected</p>
+            <p className="text-xs text-rose-700/80">Check the reviewer note and re-submit to keep growing on Folio.</p>
+          </div>
+        </div>
+        <Link href="/business/compliance" className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700">Fix and resubmit</Link>
+      </div>
+    );
+  }
+  // unsubmitted
+  return (
+    <div className="rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/10 via-fuchsia-50 to-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-fuchsia-500 text-white shadow-md">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+              <path d="M12 2l2.6 2.4 3.5-.5.5 3.5L21 9l-1.6 3.2L21 15l-2.4 1.6.5 3.5-3.5-.5L12 22l-2.6-2.4-3.5.5-.5-3.5L3 15l1.6-3-1.6-3 2.4-1.6-.5-3.5 3.5.5L12 2z" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-base font-semibold tracking-tight">Get the Verified badge</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Submit your standard Nigerian compliance docs (CAC RC/BN or NIN + government ID) to win client trust faster and unlock priority matches.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/business/compliance"
+          className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          Start compliance →
+        </Link>
+      </div>
     </div>
   );
 }

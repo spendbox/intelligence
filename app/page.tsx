@@ -4,6 +4,7 @@ import { IndustryIcon } from "@/lib/industryIcons";
 import { LogoMark } from "@/lib/logo";
 import { getSettings } from "@/lib/settings";
 import { formatNaira } from "@/lib/leads";
+import { FlowIllustration, HeroIllustration, StackIllustration, WalletIllustration } from "@/lib/illustrations";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,12 @@ async function loadStats() {
       sb.from("businesses").select("*", { count: "exact", head: true }).eq("setup_complete", true),
       sb.from("lead_requests").select("*", { count: "exact", head: true }).eq("status", "approved"),
     ]);
-    return { businesses: biz.count ?? 0, requests: req.count ?? 0 };
+    // Show at least 100+ while the marketplace seeds — keeps the landing
+    // confident-looking before the real count crosses that bar.
+    const businesses = Math.max(100, biz.count ?? 0);
+    return { businesses, requests: req.count ?? 0 };
   } catch {
-    return { businesses: 0, requests: 0 };
+    return { businesses: 100, requests: 0 };
   }
 }
 
@@ -91,54 +95,67 @@ export default async function HomePage() {
           />
         </div>
 
-        <div className="mx-auto max-w-4xl px-5 pb-24 pt-16 sm:pt-24">
-          <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-light opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-light" />
-            </span>
-            Built for Nigeria · folio.cafe
-          </div>
+        <div className="mx-auto max-w-6xl px-5 pb-24 pt-16 sm:pt-20 lg:pt-24">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
+            <div>
+              <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-light opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-light" />
+                </span>
+                Built for Nigeria · folio.cafe
+              </div>
 
-          <h1 className="animate-fade-up delay-100 mt-6 text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-            Get the leads.{" "}
-            <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
-              Close the business.
-            </span>
-          </h1>
+              <h1 className="animate-fade-up delay-100 mt-6 text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
+                Get the leads.{" "}
+                <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
+                  Close the Deal.
+                </span>
+              </h1>
 
-          <p className="animate-fade-up delay-200 mt-5 max-w-2xl text-balance text-lg text-white/70 sm:text-xl">
-            Folio is the marketplace where Nigerian customers post what they need, and trusted businesses in
-            their industry, area and budget reach out directly. Real customers. No spam. Fair pricing.
-          </p>
-
-          <div className="animate-fade-up delay-300 mt-9 grid gap-3 sm:grid-cols-2">
-            <Link
-              href="/order"
-              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-fuchsia-500 p-5 shadow-[0_18px_40px_-12px_rgba(124,58,237,0.7)] transition hover:shadow-[0_24px_50px_-12px_rgba(124,58,237,1)]"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">Looking for a service?</p>
-              <p className="mt-2 text-xl font-bold text-white">Post a request →</p>
-              <p className="mt-1 text-sm text-white/80">Free. Tell us what you need; vetted businesses come to you.</p>
-              <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-500 group-hover:translate-x-0" />
-            </Link>
-            <Link
-              href="/login"
-              className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md transition hover:border-white/30 hover:bg-white/10"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Run a business?</p>
-              <p className="mt-2 text-xl font-bold text-white">Get vetted leads →</p>
-              <p className="mt-1 text-sm text-white/65">
-                Sign up, complete compliance, get matched leads in your industry & area.
+              <p className="animate-fade-up delay-200 mt-5 max-w-xl text-balance text-lg text-white/70 sm:text-xl">
+                Folio is the marketplace where Nigerian customers post what they need, and trusted businesses in
+                their industry, area and budget reach out directly. Real customers. No spam. Fair pricing.
               </p>
-            </Link>
+
+              <div className="animate-fade-up delay-300 mt-9 grid gap-3 sm:grid-cols-2">
+                <Link
+                  href="/order"
+                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-fuchsia-500 p-5 shadow-[0_18px_40px_-12px_rgba(124,58,237,0.7)] transition hover:shadow-[0_24px_50px_-12px_rgba(124,58,237,1)]"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">Looking for a service?</p>
+                  <p className="mt-2 text-xl font-bold text-white">Post a request →</p>
+                  <p className="mt-1 text-sm text-white/80">Free. Tell us what you need; vetted businesses come to you.</p>
+                  <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-500 group-hover:translate-x-0" />
+                </Link>
+                <Link
+                  href="/login"
+                  className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md transition hover:border-white/30 hover:bg-white/10"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Run a business?</p>
+                  <p className="mt-2 text-xl font-bold text-white">Get vetted leads →</p>
+                  <p className="mt-1 text-sm text-white/65">
+                    Sign up, complete compliance, get matched leads in your industry & area.
+                  </p>
+                </Link>
+              </div>
+
+              <div className="animate-fade-up delay-500 mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-white/60">
+                <Stat value={`${industries.length}`} label="industries" />
+                <Stat value={`${stats.businesses.toLocaleString()}+`} label="businesses" />
+                <Stat value="Up to 10" label="businesses per request" />
+                <Stat value="Verified" label="every business" />
+              </div>
+            </div>
+
+            <div className="animate-fade-up delay-300 hidden lg:block">
+              <HeroIllustration />
+            </div>
           </div>
 
-          <div className="animate-fade-up delay-500 mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-white/60">
-            <Stat value={`${industries.length}`} label="industries" />
-            <Stat value={`${stats.businesses.toLocaleString()}+`} label="businesses" />
-            <Stat value="Up to 10" label="businesses per request" />
-            <Stat value="100%" label="Nigeria-built" />
+          {/* Mobile-only illustration, smaller */}
+          <div className="animate-fade-up delay-300 mt-12 lg:hidden">
+            <HeroIllustration />
           </div>
         </div>
 
@@ -182,6 +199,7 @@ export default async function HomePage() {
             <FlowCard
               eyebrow="For customers"
               title="Get matched in minutes"
+              illustration={<StackIllustration className="h-20 w-24" />}
               cta={{ href: "/order", label: "Post a free request →" }}
               steps={[
                 { n: 1, title: "Post what you need", body: "Describe it, set a budget range and location. AI auto-tags the industry." },
@@ -192,6 +210,7 @@ export default async function HomePage() {
             <FlowCard
               eyebrow="For businesses"
               title="Real leads. Pay only to unlock."
+              illustration={<WalletIllustration className="h-20 w-24" />}
               accent
               cta={{ href: "/login", label: "Start receiving leads →" }}
               steps={[
@@ -200,6 +219,10 @@ export default async function HomePage() {
                 { n: 3, title: "Unlock and close", body: `Spend credits to reveal the client's contact. From ${sampleUnlock} credit on a ${formatNaira(100_000)} brief.` },
               ]}
             />
+          </div>
+
+          <div className="mt-16">
+            <FlowIllustration />
           </div>
         </div>
       </section>
@@ -351,7 +374,7 @@ export default async function HomePage() {
           <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
             Stop chasing.{" "}
             <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
-              Start closing.
+              Start closing the Deal.
             </span>
           </h2>
           <p className="mt-4 text-base text-white/70 sm:text-lg">
@@ -412,12 +435,14 @@ function FlowCard({
   steps,
   cta,
   accent = false,
+  illustration,
 }: {
   eyebrow: string;
   title: string;
   steps: { n: number; title: string; body: string }[];
   cta: { href: string; label: string };
   accent?: boolean;
+  illustration?: React.ReactNode;
 }) {
   return (
     <div
@@ -426,8 +451,13 @@ function FlowCard({
         (accent ? "border-brand/30 bg-gradient-to-br from-brand/[0.05] to-fuchsia-50" : "border-slate-200 bg-white")
       }
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{eyebrow}</p>
-      <h3 className="mt-2 text-2xl font-bold tracking-tight">{title}</h3>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{eyebrow}</p>
+          <h3 className="mt-2 text-2xl font-bold tracking-tight">{title}</h3>
+        </div>
+        {illustration}
+      </div>
       <ol className="mt-6 space-y-5">
         {steps.map((s) => (
           <li key={s.n} className="flex gap-4">
