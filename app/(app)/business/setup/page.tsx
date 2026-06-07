@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { saveBusinessSetupAction } from "./actions";
 import IndustryPicker from "./IndustryPicker";
 import { BUDGET_PRESETS } from "@/lib/leads";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -108,9 +109,9 @@ export default async function BusinessSetupPage({ searchParams }: { searchParams
           <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">Please fill in at least your business name, one industry, one location, and one budget range.</p>
         )}
 
-        <button className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
+        <SubmitButton className="px-5 py-2.5" pendingLabel="Saving…">
           Save & continue
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

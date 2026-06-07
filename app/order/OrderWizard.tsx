@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { LogoMark } from "@/lib/logo";
 import { sendOrderCodeAction, submitOrderAction, suggestIndustryAction } from "./actions";
 
 type Industry = { id: string; slug: string; name: string };
@@ -110,7 +111,7 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
       <div className="mx-auto flex max-w-xl flex-col px-5 py-8 sm:py-12">
         <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
-            <span className="inline-block h-5 w-5 rounded bg-gradient-to-br from-brand to-fuchsia-400" />
+            <LogoMark className="h-6 w-6" />
             Folio
           </Link>
           <Link href="/" className="text-xs text-white/60 hover:text-white">Cancel</Link>
