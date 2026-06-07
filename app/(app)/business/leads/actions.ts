@@ -33,14 +33,16 @@ export async function unlockLeadAction(formData: FormData) {
   if (req.unlocks_count >= req.unlocks_cap) redirect(`/business/leads/${id}?error=cap`);
 
   const { data: wallet } = await sb.from("wallets").select("credits").eq("user_id", session.userId).maybeSingle();
-  const credits = wallet?.credits ?? 0;
-  if (credits < req.unlock_credits) redirect(`/business/leads/${id}?error=credits`);
+  const credits = Number(wallet?.credits ?? 0);
+  const cost = Number(req.unlock_credits);
+  if (credits < cost) redirect(`/business/leads/${id}?error=credits`);
 
   // Atomic-ish unlock: decrement wallet, insert unlock, bump request counter.
-  await sb.from("wallets").update({ credits: credits - req.unlock_credits }).eq("user_id", session.userId);
+  const newBalance = Math.round((credits - cost) * 100) / 100;
+  await sb.from("wallets").update({ credits: newBalance }).eq("user_id", session.userId);
   await sb.from("wallet_transactions").insert({
     user_id: session.userId,
-    delta: -req.unlock_credits,
+    delta: -cost,
     reason: "unlock",
     reference: `unlock_${req.id}`,
     metadata: { request_id: req.id, business_id: business.id },
@@ -49,7 +51,7 @@ export async function unlockLeadAction(formData: FormData) {
     request_id: req.id,
     business_id: business.id,
     user_id: session.userId,
-    credits_spent: req.unlock_credits,
+    credits_spent: cost,
   });
   if (insErr) {
     // Refund on conflict

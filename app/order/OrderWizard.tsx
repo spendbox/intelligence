@@ -4,14 +4,19 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/lib/logo";
-import { sendOrderCodeAction, submitOrderAction, suggestIndustryAction } from "./actions";
+import { improveDescriptionAction, sendOrderCodeAction, submitOrderAction, suggestIndustryAction } from "./actions";
 
 type Industry = { id: string; slug: string; name: string };
-type BudgetPreset = { label: string; min: number; max: number };
 
 const STEPS = ["About", "Budget", "Where", "Contact", "Verify"] as const;
 
-export default function OrderWizard({ industries, budgets }: { industries: Industry[]; budgets: BudgetPreset[] }) {
+function formatNaira(n: number) {
+  return "₦" + Math.round(n).toLocaleString();
+}
+
+const PRIORITY_OPTIONS = [500, 1500, 3000, 5000, 10000];
+
+export default function OrderWizard({ industries }: { industries: Industry[] }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [pending, start] = useTransition();
@@ -20,28 +25,32 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [improving, setImproving] = useState(false);
 
-  const [budgetIdx, setBudgetIdx] = useState<number>(-1);
-  const [budgetMin, setBudgetMin] = useState<number>(0);
-  const [budgetMax, setBudgetMax] = useState<number>(0);
+  const [budgetMin, setBudgetMin] = useState<string>("");
+  const [budgetMax, setBudgetMax] = useState<string>("");
 
   const [location, setLocation] = useState("");
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const [isPriority, setIsPriority] = useState(false);
+  const [priorityAmount, setPriorityAmount] = useState<number>(1500);
+
+  const [terms, setTerms] = useState(false);
 
   const [email, setEmail] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
 
+  const budgetMaxNum = Number(budgetMax) || 0;
+  const budgetMinNum = Number(budgetMin) || 0;
+  const eligiblePriority = budgetMaxNum > 1_000_000;
+
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
-
-  function pickBudget(i: number) {
-    setBudgetIdx(i);
-    setBudgetMin(budgets[i].min);
-    setBudgetMax(budgets[i].max);
-  }
 
   async function suggestIndustry() {
     if (description.trim().length < 8) return;
@@ -53,6 +62,21 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
       if (r.categoryId) setCategoryId(r.categoryId);
     } finally {
       setAiBusy(false);
+    }
+  }
+
+  async function improveDescription() {
+    if (description.trim().length < 8) return;
+    setImproving(true);
+    setError(null);
+    const fd = new FormData();
+    fd.set("description", description);
+    try {
+      const r = await improveDescriptionAction(fd);
+      if (r.ok && r.description) setDescription(r.description);
+      else if (r.error) setError(r.error);
+    } finally {
+      setImproving(false);
     }
   }
 
@@ -74,34 +98,44 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
       const fd = new FormData();
       fd.set("description", description);
       if (categoryId) fd.set("category_id", categoryId);
-      fd.set("budget_min", String(budgetMin));
-      fd.set("budget_max", String(budgetMax));
+      fd.set("budget_min", String(budgetMinNum));
+      fd.set("budget_max", String(budgetMaxNum));
       fd.set("location", location);
       fd.set("name", name);
       fd.set("phone", phone);
       fd.set("email", email);
       fd.set("code", code);
+      fd.set("terms", terms ? "on" : "");
+      if (eligiblePriority && isPriority) {
+        fd.set("is_priority", "true");
+        fd.set("priority_amount", String(priorityAmount));
+      }
+      if (imageFile) fd.set("image", imageFile);
+
       const r = await submitOrderAction(fd);
       if (!r.ok) {
         setError(r.error ?? "Something went wrong.");
         return;
       }
-      router.push(`/order/done`);
+      if (r.priorityRedirect) {
+        window.location.href = r.priorityRedirect;
+      } else {
+        router.push("/order/done");
+      }
     });
   }
 
   const canNext = (() => {
     if (step === 0) return description.trim().length >= 8;
-    if (step === 1) return budgetMax > 0 && budgetMax >= budgetMin;
+    if (step === 1) return budgetMaxNum > 0 && budgetMaxNum >= budgetMinNum;
     if (step === 2) return location.trim().length >= 2;
     if (step === 3) return name.trim().length >= 2 && phone.trim().length >= 6;
-    if (step === 4) return codeSent && /^\d{4}$/.test(code);
+    if (step === 4) return codeSent && /^\d{4}$/.test(code) && terms;
     return false;
   })();
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-ink text-white">
-      {/* Background */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-32 -left-20 h-[420px] w-[420px] rounded-full bg-brand/30 blur-3xl" />
         <div className="absolute top-1/3 -right-24 h-[460px] w-[460px] rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -122,7 +156,6 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
           <p className="mt-1 text-sm text-white/60">Tell us what you need. We'll match it with trusted businesses.</p>
         </div>
 
-        {/* Stepper */}
         <ol className="mt-6 flex items-center gap-2">
           {STEPS.map((s, i) => (
             <li key={s} className="flex flex-1 items-center gap-2">
@@ -158,6 +191,15 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  onClick={improveDescription}
+                  disabled={improving || description.trim().length < 8}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-50"
+                >
+                  {improving && <Spinner />}
+                  {improving ? "Improving…" : "✨ Improve with AI"}
+                </button>
+                <button
+                  type="button"
                   onClick={suggestIndustry}
                   disabled={aiBusy || description.trim().length < 8}
                   className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
@@ -181,27 +223,72 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
           {step === 1 && (
             <div>
               <h2 className="text-lg font-semibold">What's your budget?</h2>
-              <p className="mt-1 text-sm text-white/60">Pick the range that fits — businesses use this to decide if they're a fit.</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {budgets.map((b, i) => {
-                  const active = budgetIdx === i;
-                  return (
-                    <button
-                      key={b.label}
-                      type="button"
-                      onClick={() => pickBudget(i)}
-                      className={
-                        "rounded-xl border px-3 py-3 text-left text-sm font-medium transition " +
-                        (active
-                          ? "border-brand bg-brand/15 text-white"
-                          : "border-white/10 bg-white/[0.03] text-white/80 hover:bg-white/[0.06]")
-                      }
-                    >
-                      {b.label}
-                    </button>
-                  );
-                })}
+              <p className="mt-1 text-sm text-white/60">Enter a range in naira. Businesses use this to decide if they're a fit.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-medium uppercase tracking-wide text-white/60">Minimum (₦)</label>
+                  <input
+                    value={budgetMin}
+                    onChange={(e) => setBudgetMin(e.target.value.replace(/[^\d]/g, ""))}
+                    inputMode="numeric"
+                    placeholder="e.g. 50000"
+                    className="mt-1 w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none focus:bg-white/10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium uppercase tracking-wide text-white/60">Maximum (₦)</label>
+                  <input
+                    value={budgetMax}
+                    onChange={(e) => setBudgetMax(e.target.value.replace(/[^\d]/g, ""))}
+                    inputMode="numeric"
+                    placeholder="e.g. 100000"
+                    className="mt-1 w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none focus:bg-white/10"
+                  />
+                </div>
               </div>
+              <p className="mt-2 text-xs text-white/50">
+                {budgetMinNum > 0 || budgetMaxNum > 0
+                  ? `Range: ${formatNaira(budgetMinNum)} – ${formatNaira(budgetMaxNum)}`
+                  : "Type the lowest and highest amounts you're willing to spend."}
+              </p>
+
+              {eligiblePriority && (
+                <div className="mt-5 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4">
+                  <label className="flex cursor-pointer items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isPriority}
+                      onChange={(e) => setIsPriority(e.target.checked)}
+                      className="mt-1 h-4 w-4 accent-amber-400"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-white">🔥 Boost as priority</p>
+                      <p className="mt-0.5 text-xs text-white/70">
+                        Recommended for budgets over ₦1m. Priority requests are tagged in business inboxes and appear first.
+                      </p>
+                    </div>
+                  </label>
+                  {isPriority && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {PRIORITY_OPTIONS.map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setPriorityAmount(amt)}
+                          className={
+                            "rounded-full px-3 py-1 text-xs font-medium transition " +
+                            (priorityAmount === amt
+                              ? "bg-amber-400 text-amber-950"
+                              : "border border-amber-300/40 bg-white/5 text-white/80 hover:bg-white/10")
+                          }
+                        >
+                          {formatNaira(amt)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -236,6 +323,16 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
                   placeholder="Phone number"
                   className="w-full rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none focus:bg-white/10"
                 />
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-white/60">Reference image (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                    className="mt-1 block w-full text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                  />
+                  {imageFile && <p className="mt-1 text-xs text-white/60">{imageFile.name}</p>}
+                </div>
               </div>
             </div>
           )}
@@ -276,6 +373,22 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
                   </button>
                 </>
               )}
+
+              <label className="mt-5 flex cursor-pointer items-start gap-2 text-sm text-white/80">
+                <input
+                  type="checkbox"
+                  checked={terms}
+                  onChange={(e) => setTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-brand"
+                />
+                <span>
+                  I agree to Folio's{" "}
+                  <Link href="/terms" target="_blank" className="font-medium text-brand-light underline">
+                    Terms & Conditions
+                  </Link>
+                  .
+                </span>
+              </label>
             </div>
           )}
 
@@ -305,13 +418,23 @@ export default function OrderWizard({ industries, budgets }: { industries: Indus
               type="button"
               onClick={submit}
               disabled={!canNext || pending}
-              className="rounded-xl bg-gradient-to-br from-brand to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(124,58,237,0.8)] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-brand to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(124,58,237,0.8)] disabled:opacity-50"
             >
-              {pending ? "Submitting…" : "Submit request"}
+              {pending && <Spinner />}
+              {pending ? "Submitting…" : isPriority && eligiblePriority ? `Submit & pay ${formatNaira(priorityAmount)}` : "Submit request"}
             </button>
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
   );
 }

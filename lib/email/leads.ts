@@ -95,14 +95,20 @@ export async function sendBusinessLeadEmail(to: string, payload: {
   budget: string;
   location: string;
   unlockCredits: number;
+  priority?: boolean;
 }) {
+  const priorityBanner = payload.priority
+    ? `<div style="display:inline-block;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px;letter-spacing:0.06em;margin-bottom:12px">🔥 PRIORITY LEAD</div>`
+    : "";
+  const subjectPrefix = payload.priority ? "🔥 PRIORITY · " : "";
   return client().emails.send({
     from: FROM(),
     to,
-    subject: `New ${payload.industryName} lead in ${payload.location}`,
+    subject: `${subjectPrefix}New ${payload.industryName} lead in ${payload.location}`,
     html: shell(
       "New lead matched for you",
-      `<p>A new request was just matched to your business.</p>
+      `${priorityBanner}
+       <p>A new request was just matched to your business${payload.priority ? " — and the customer paid for priority placement" : ""}.</p>
        <ul style="line-height:1.7">
          <li><strong>Industry:</strong> ${payload.industryName}</li>
          <li><strong>Location:</strong> ${payload.location}</li>

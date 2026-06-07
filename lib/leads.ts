@@ -11,11 +11,19 @@ export const TOPUP_MAX_NAIRA = 1_000_000;
 
 // Sync helpers (fallback defaults — used for previews / inputs).
 export function nairaToCredits(naira: number, nairaPerCredit = DEFAULT_NAIRA_PER_CREDIT): number {
-  return Math.max(0, Math.floor(naira / nairaPerCredit));
+  if (nairaPerCredit <= 0) return 0;
+  // Decimal-friendly: round to 2 dp instead of flooring.
+  return Math.round((naira / nairaPerCredit) * 100) / 100;
 }
 
 export function unlockCreditsFor(budgetMax: number, rate = DEFAULT_UNLOCK_RATE): number {
-  return Math.max(1, Math.floor(budgetMax * rate));
+  const raw = budgetMax * rate;
+  return Math.max(1, Math.round(raw * 100) / 100);
+}
+
+export function formatCredits(n: number): string {
+  if (!Number.isFinite(n)) return "0";
+  return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
 // Async helpers — read live config from app_settings.

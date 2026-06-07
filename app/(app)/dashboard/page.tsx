@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { MIN_NOTIFICATION_CREDITS, formatBudgetRange } from "@/lib/leads";
+import { MIN_NOTIFICATION_CREDITS, formatBudgetRange, formatCredits } from "@/lib/leads";
 import { getOrigin } from "@/lib/originUrl";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   if (!business || !business.setup_complete) redirect("/business/setup");
 
   const { data: wallet } = await sb.from("wallets").select("credits").eq("user_id", session.userId!).maybeSingle();
-  const credits = wallet?.credits ?? 0;
+  const credits = Number(wallet?.credits ?? 0);
 
   const { data: recent } = await sb
     .from("lead_notifications")
@@ -86,7 +86,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       {searchParams.topup === "success" && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
           🎉 Top-up successful{searchParams.amount ? ` — ₦${Number(searchParams.amount).toLocaleString()} credited.` : "."}{" "}
-          Your balance is now <strong>{credits.toLocaleString()} credits</strong>.
+          Your balance is now <strong>{formatCredits(credits)} credits</strong>.
         </div>
       )}
 
@@ -100,7 +100,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Wallet" value={`${credits.toLocaleString()}`} hint="credits" />
+        <Stat label="Wallet" value={`${formatCredits(credits)}`} hint="credits" />
         <Stat label="Leads unlocked" value={String(unlockCount ?? 0)} hint="total" />
         <Stat label="Status" value={business.verified ? "Verified" : "Unverified"} hint="business" />
       </div>

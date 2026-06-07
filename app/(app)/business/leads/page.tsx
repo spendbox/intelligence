@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { formatBudgetRange } from "@/lib/leads";
+import { formatBudgetRange, formatCredits } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,7 @@ export default async function BusinessLeadsPage({
   // Build the request list depending on tab
   let q = sb
     .from("lead_requests")
-    .select("id, location, status, budget_min, budget_max, unlock_credits, unlocks_count, unlocks_cap, description, created_at, category_id, categories(name)")
+    .select("id, location, status, budget_min, budget_max, unlock_credits, unlocks_count, unlocks_cap, description, created_at, category_id, is_priority, priority_paid, categories(name)")
     .eq("status", "approved")
     .order("created_at", { ascending: false })
     .limit(200);
@@ -130,7 +130,14 @@ export default async function BusinessLeadsPage({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand">{r.categories?.name ?? "Lead"}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-brand">{r.categories?.name ?? "Lead"}</p>
+                    {r.is_priority && r.priority_paid && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-rose-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                        🔥 Priority
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-base font-semibold">{r.location}</p>
                   <p className="mt-1 text-sm text-slate-600">{formatBudgetRange(r.budget_min, r.budget_max)}</p>
                 </div>
@@ -144,7 +151,7 @@ export default async function BusinessLeadsPage({
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Closed</span>
                   ) : (
                     <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      {r.unlock_credits} credits to unlock
+                      {formatCredits(Number(r.unlock_credits))} credits to unlock
                     </span>
                   )}
                 </div>

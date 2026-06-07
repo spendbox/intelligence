@@ -103,7 +103,7 @@ export default async function HomePage() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-light opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-light" />
                 </span>
-                Built for Nigeria · folio.cafe
+                folio.cafe · Nigeria's leads marketplace
               </div>
 
               <h1 className="animate-fade-up delay-100 mt-6 text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
@@ -144,7 +144,7 @@ export default async function HomePage() {
                 <Stat value={`${industries.length}`} label="industries" />
                 <Stat value={`${stats.businesses.toLocaleString()}+`} label="businesses" />
                 <Stat value="Up to 10" label="businesses per request" />
-                <Stat value="Verified" label="every business" />
+                <Stat value="Compliance" label="reviewed by humans" />
               </div>
             </div>
 
@@ -313,8 +313,8 @@ export default async function HomePage() {
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customers</p>
-              <p className="mt-2 text-3xl font-bold tracking-tight">Always free</p>
-              <p className="mt-2 text-sm text-slate-600">Post requests, compare businesses, choose the best fit. No card, no fees.</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight">Free to post</p>
+              <p className="mt-2 text-sm text-slate-600">Posting a request is free. For requests over ₦1m you can boost as priority so businesses see it first.</p>
               <Link href="/order" className="mt-5 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 Post a request →
               </Link>
@@ -323,7 +323,7 @@ export default async function HomePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Businesses</p>
               <p className="mt-2 text-3xl font-bold tracking-tight">Pay as you unlock</p>
               <p className="mt-2 text-sm text-slate-600">
-                Top up your wallet from {formatNaira(1000)}. 1 credit = {formatNaira(creditNaira)}. Most leads cost ~{sampleUnlock}–{Math.max(1, sampleUnlock * 10)} credits depending on budget.
+                Top up your wallet from {formatNaira(1000)}. 1 credit = {formatNaira(creditNaira)}. Unlock cost scales with the lead's budget.
               </p>
               <Link href="/login" className="mt-5 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
                 Get started →
@@ -411,6 +411,8 @@ export default async function HomePage() {
             <a href="#industries" className="hover:text-white">Industries</a>
             <a href="#faq" className="hover:text-white">FAQ</a>
             <Link href="/order" className="hover:text-white">Post a request</Link>
+            <Link href="/orders" className="hover:text-white">My requests</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
             <Link href="/login" className="hover:text-white">Sign in</Link>
           </div>
           <span className="text-white/30">© {new Date().getFullYear()} Folio</span>
