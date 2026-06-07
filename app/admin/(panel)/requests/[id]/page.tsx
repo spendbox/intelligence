@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { formatBudgetRange } from "@/lib/leads";
+import { formatBudgetRange, formatCredits } from "@/lib/leads";
 import {
   addMatchAction,
   approveRequestAction,
@@ -24,7 +24,7 @@ export default async function AdminRequestDetail({
   const sb = supabaseAdmin();
   const { data: r } = await sb
     .from("lead_requests")
-    .select("id, name, email, phone, description, status, budget_min, budget_max, location, unlock_credits, unlocks_count, unlocks_cap, created_at, approved_at, reject_reason, categories(name, id)")
+    .select("id, name, email, phone, description, status, budget_min, budget_max, location, unlock_credits, unlocks_count, unlocks_cap, is_priority, priority_paid, created_at, approved_at, reject_reason, categories(name, id)")
     .eq("id", params.id)
     .maybeSingle();
   if (!r) notFound();
@@ -60,7 +60,17 @@ export default async function AdminRequestDetail({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Request from {r.name}</h1>
-          <p className="mt-1 text-sm text-slate-600">{new Date(r.created_at).toLocaleString()}</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {new Date(r.created_at).toLocaleString()}
+            {r.is_priority && (
+              <>
+                {" · "}
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-rose-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                  🔥 Priority{r.priority_paid ? " · paid" : " · unpaid"}
+                </span>
+              </>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -100,7 +110,7 @@ export default async function AdminRequestDetail({
           <Row label="Industry" value={(r as any).categories?.name ?? "—"} />
           <Row label="Budget" value={formatBudgetRange(r.budget_min, r.budget_max)} />
           <Row label="Location" value={r.location} />
-          <Row label="Unlock cost" value={`${r.unlock_credits} credits`} />
+          <Row label="Unlock cost" value={`${formatCredits(Number(r.unlock_credits))} credits`} />
           <Row label="Email" value={r.email} />
           <Row label="Phone" value={r.phone} />
         </dl>

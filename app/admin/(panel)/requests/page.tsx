@@ -24,7 +24,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
   const status = (searchParams.status ?? "submitted") as string;
   let q = sb
     .from("lead_requests")
-    .select("id, name, location, description, budget_min, budget_max, status, unlocks_count, created_at, categories(name)")
+    .select("id, name, location, description, budget_min, budget_max, status, is_priority, priority_paid, unlocks_count, created_at, categories(name)")
     .order("created_at", { ascending: false })
     .limit(100);
   if (status !== "all") q = q.eq("status", status);
@@ -77,7 +77,16 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
           <tbody>
             {(requests ?? []).map((r: any) => (
               <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                <td className="px-4 py-2.5 font-medium">{r.name}</td>
+                <td className="px-4 py-2.5 font-medium">
+                  <div className="flex items-center gap-2">
+                    <span>{r.name}</span>
+                    {r.is_priority && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-rose-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+                        🔥
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-slate-600">{r.categories?.name ?? "—"}</td>
                 <td className="px-4 py-2.5 text-slate-600">{formatBudgetRange(r.budget_min, r.budget_max)}</td>
                 <td className="px-4 py-2.5 text-slate-600">{r.location}</td>

@@ -42,11 +42,13 @@ export async function saveBusinessSetupAction(formData: FormData) {
   const categoryIds = formData.getAll("category").map(String).filter(Boolean).slice(0, 3);
   const budgetIdxs = formData.getAll("budget").map((s) => parseInt(String(s), 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < BUDGET_PRESETS.length);
 
-  if (!businessName || categoryIds.length === 0 || locations.length === 0 || budgetIdxs.length === 0) {
+  const terms = formData.get("terms") === "on";
+  if (!businessName || categoryIds.length === 0 || locations.length === 0 || budgetIdxs.length === 0 || !terms) {
     redirect("/business/setup?error=1");
   }
 
   const sb = supabaseAdmin();
+  await sb.from("users").update({ terms_accepted_at: new Date().toISOString() }).eq("id", session.userId);
   const { data: existing } = await sb.from("businesses").select("id, slug").eq("user_id", session.userId).maybeSingle();
 
   let bizId: string;

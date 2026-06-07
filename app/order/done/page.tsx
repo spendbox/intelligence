@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { LogoMark } from "@/lib/logo";
 
-export default function DonePage() {
+export default function DonePage({ searchParams }: { searchParams: { priority?: string } }) {
+  const priority = searchParams.priority;
+  const priorityCopy =
+    priority === "success"
+      ? "Priority boost confirmed — your request will appear first in business inboxes."
+      : priority === "failed"
+      ? "Priority payment didn't complete, but your request is still in for review."
+      : null;
+
   return (
     <main className="min-h-screen bg-ink px-5 py-12 text-white">
       <div className="mx-auto max-w-md">
@@ -17,9 +25,19 @@ export default function DonePage() {
           </div>
           <h1 className="mt-6 text-3xl font-bold">Request submitted</h1>
           <p className="mt-2 text-white/70">Our team is reviewing your request. As soon as it's approved we'll match it with trusted businesses in your area — they'll reach out directly.</p>
-          <Link href="/" className="mt-6 inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-white/90">
-            Back home
-          </Link>
+          {priorityCopy && (
+            <p className={`mt-4 rounded-md px-3 py-2 text-sm ${priority === "success" ? "bg-amber-400/15 text-amber-200" : "bg-rose-500/10 text-rose-200"}`}>
+              {priorityCopy}
+            </p>
+          )}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/orders" className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-white/90">
+              See your requests
+            </Link>
+            <Link href="/" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10">
+              Back home
+            </Link>
+          </div>
         </div>
       </div>
     </main>

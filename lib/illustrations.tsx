@@ -145,9 +145,11 @@ export function FlowIllustration({ small = false }: { small?: boolean }) {
           <circle cx="0" cy="-3" r="4.5" />
           <path d="M -7 9 a 7 7 0 0 1 14 0" />
         </g>
-        {/* heart match */}
-        <g transform="translate(180 100)" fill="#fff">
-          <path d="M0 6 C-6 0,-6 -7,-3 -7 C-1 -7,0 -5,0 -3 C0 -5,1 -7,3 -7 C6 -7,6 0,0 6 Z" />
+        {/* link / match icon — interlocking circles */}
+        <g transform="translate(180 100)" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M-7 0 a 4 4 0 0 1 4 -4 h 3" />
+          <path d="M7 0 a 4 4 0 0 1 -4 4 h -3" />
+          <line x1="-4" y1="0" x2="4" y2="0" />
         </g>
         {/* business */}
         <g transform="translate(270 100)" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

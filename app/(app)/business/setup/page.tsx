@@ -105,8 +105,27 @@ export default async function BusinessSetupPage({ searchParams }: { searchParams
           </div>
         </section>
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="terms"
+              required
+              defaultChecked={false}
+              className="mt-1 h-4 w-4 accent-brand"
+            />
+            <span>
+              I agree to Folio's{" "}
+              <a href="/terms" target="_blank" className="font-medium text-brand underline">
+                Terms & Conditions
+              </a>
+              .
+            </span>
+          </label>
+        </section>
+
         {searchParams.error && (
-          <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">Please fill in at least your business name, one industry, one location, and one budget range.</p>
+          <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">Please fill in at least your business name, one industry, one location, one budget range, and accept the Terms.</p>
         )}
 
         <SubmitButton className="px-5 py-2.5" pendingLabel="Saving…">

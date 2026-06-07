@@ -146,7 +146,7 @@ function SaveBadge({ status }: { status: Status }) {
   if (status.kind === "saving") return <Badge color="slate">Saving…</Badge>;
   if (status.kind === "saved") return <Badge color="emerald">Saved ✓</Badge>;
   if (status.kind === "error") return <Badge color="rose">{status.msg}</Badge>;
-  return <span className="text-xs text-slate-400">Idle</span>;
+  return null;
 }
 
 function Badge({ color, children }: { color: "slate" | "emerald" | "rose"; children: React.ReactNode }) {

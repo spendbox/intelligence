@@ -1,12 +1,16 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { generatePin, hashPin, PIN_MAX_ATTEMPTS, PIN_TTL_MINUTES, verifyPin } from "@/lib/auth/pin";
 import { sendBusinessLeadEmail, sendOrderReceivedEmail, sendOrderVerificationEmail, sendAdminNewRequestEmail } from "@/lib/email/leads";
 import { env } from "@/lib/env";
-import { locationsMatch, MIN_NOTIFICATION_CREDITS, computeUnlockCredits, UNLOCK_CAP_DEFAULT, formatBudgetRange } from "@/lib/leads";
+import { locationsMatch, MIN_NOTIFICATION_CREDITS, unlockCreditsFor, UNLOCK_CAP_DEFAULT, formatBudgetRange, formatCredits } from "@/lib/leads";
+import { extensionOf, uploadFile } from "@/lib/storage";
+import { getSettings } from "@/lib/settings";
 
 const SuggestSchema = z.object({ description: z.string().min(5).max(2000) });
 
@@ -19,7 +23,6 @@ export async function suggestIndustryAction(formData: FormData): Promise<{ categ
   const choices = (cats ?? []).map((c) => `${c.slug}: ${c.name}${c.description ? " — " + c.description : ""}`).join("\n");
 
   if (!env.openaiKeySafe()) {
-    // Fallback: simple keyword scoring
     const lc = parsed.data.description.toLowerCase();
     const guess = (cats ?? []).find((c) => lc.includes(c.name.toLowerCase().split(" ")[0]));
     return { categoryId: guess?.id ?? null, categoryName: guess?.name ?? null };
@@ -46,6 +49,39 @@ export async function suggestIndustryAction(formData: FormData): Promise<{ categ
     return { categoryId: match?.id ?? null, categoryName: match?.name ?? null };
   } catch {
     return { categoryId: null, categoryName: null };
+  }
+}
+
+export async function improveDescriptionAction(formData: FormData): Promise<{ ok: boolean; description?: string; error?: string }> {
+  const desc = String(formData.get("description") ?? "").trim();
+  if (desc.length < 8) return { ok: false, error: "Add a bit more detail first." };
+  if (!env.openaiKeySafe()) return { ok: false, error: "AI is not configured." };
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.openaiKey()}` },
+      body: JSON.stringify({
+        model: env.openaiModel(),
+        response_format: { type: "json_object" },
+        temperature: 0.4,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You rewrite a customer's service request to be clear, specific and concise, with the same intent. Keep the same facts; add missing details only if obvious (timeline, quantity, location specificity). Avoid emojis. 4 sentences or fewer. Reply as JSON: { \"description\": string }.",
+          },
+          { role: "user", content: desc },
+        ],
+      }),
+      cache: "no-store",
+    });
+    const j: any = await res.json();
+    const out = JSON.parse(j.choices?.[0]?.message?.content ?? "{}");
+    if (!out.description) return { ok: false, error: "Couldn't improve. Try again." };
+    return { ok: true, description: String(out.description) };
+  } catch (e: any) {
+    return { ok: false, error: "AI request failed." };
   }
 }
 
@@ -83,9 +119,12 @@ const SubmitSchema = z.object({
   phone: z.string().min(6).max(40),
   email: z.string().email(),
   code: z.string().regex(/^\d{4}$/),
+  is_priority: z.coerce.boolean().optional(),
+  priority_amount: z.coerce.number().int().min(500).max(10_000).optional(),
+  terms: z.coerce.boolean(),
 });
 
-export async function submitOrderAction(formData: FormData): Promise<{ ok: boolean; error?: string; id?: string }> {
+export async function submitOrderAction(formData: FormData): Promise<{ ok: boolean; error?: string; id?: string; priorityRedirect?: string }> {
   const parsed = SubmitSchema.safeParse({
     description: formData.get("description"),
     category_id: (formData.get("category_id") as string) || null,
@@ -96,13 +135,17 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
     phone: formData.get("phone"),
     email: String(formData.get("email") ?? "").trim().toLowerCase(),
     code: String(formData.get("code") ?? "").trim(),
+    is_priority: formData.get("is_priority") === "true" || formData.get("is_priority") === "on",
+    priority_amount: formData.get("priority_amount") || undefined,
+    terms: formData.get("terms") === "on" || formData.get("terms") === "true",
   });
   if (!parsed.success) return { ok: false, error: "Some fields are missing or invalid." };
   if (parsed.data.budget_max < parsed.data.budget_min) return { ok: false, error: "Budget max must be >= min." };
+  if (!parsed.data.terms) return { ok: false, error: "Please accept the terms to continue." };
 
   const sb = supabaseAdmin();
 
-  // Verify code
+  // Verify the email code
   const { data: row } = await sb
     .from("order_email_verifications")
     .select("id, code_hash, expires_at, consumed_at, attempts")
@@ -123,8 +166,13 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
   }
   await sb.from("order_email_verifications").update({ consumed_at: new Date().toISOString() }).eq("id", row.id);
 
-  // Create request
-  const unlockCredits = await computeUnlockCredits(parsed.data.budget_max);
+  // Compute unlock cost (decimals)
+  const settings = await getSettings();
+  const unlockCredits = unlockCreditsFor(parsed.data.budget_max, settings.unlock_rate || 0.00001);
+
+  const wantPriority = !!parsed.data.is_priority && parsed.data.budget_max > 1_000_000;
+  const priorityAmount = wantPriority ? parsed.data.priority_amount ?? 0 : 0;
+
   const { data: created, error } = await sb
     .from("lead_requests")
     .insert({
@@ -139,12 +187,38 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
       status: "submitted",
       unlock_credits: unlockCredits,
       unlocks_cap: UNLOCK_CAP_DEFAULT,
+      is_priority: wantPriority,
+      priority_amount_naira: wantPriority ? priorityAmount : null,
+      terms_accepted_at: new Date().toISOString(),
     })
     .select("id")
     .single();
   if (error || !created) return { ok: false, error: "Couldn't save the request." };
 
-  // Fire-and-forget emails
+  // Attach uploaded image, if any
+  const file = formData.get("image") as File | null;
+  if (file && file instanceof File && file.size > 0 && file.size <= 5 * 1024 * 1024) {
+    try {
+      const ext = extensionOf(file, "jpg");
+      const path = `requests/${created.id}/${randomUUID()}.${ext}`;
+      const up = await uploadFile({ file, path });
+      await sb.from("lead_request_images").insert({ request_id: created.id, url: up.publicUrl });
+    } catch (e) {
+      console.error("[order] image upload failed", e);
+    }
+  }
+
+  // Remember the customer's email for "My requests" lookup
+  cookies().set({
+    name: "folio_order_email",
+    value: parsed.data.email,
+    httpOnly: false,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 180, // 180 days
+    path: "/",
+  });
+
+  // Fire-and-forget transactional emails
   Promise.allSettled([
     sendOrderReceivedEmail(parsed.data.email, parsed.data.name),
     sendAdminNewRequestEmail(env.adminNotificationEmail(), {
@@ -155,11 +229,32 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
     }),
   ]).catch(() => {});
 
+  // If priority requested, kick off Paystack flow
+  if (wantPriority && priorityAmount > 0) {
+    try {
+      const { initializeTransaction } = await import("@/lib/paystack");
+      const { getOrigin } = await import("@/lib/originUrl");
+      const reference = `priority_${created.id}`;
+      await sb.from("lead_requests").update({ priority_reference: reference }).eq("id", created.id);
+      const tx = await initializeTransaction({
+        email: parsed.data.email,
+        amount: priorityAmount * 100,
+        currency: "NGN",
+        callbackUrl: `${getOrigin()}/api/paystack/priority-callback`,
+        reference,
+        metadata: { kind: "priority_boost", request_id: created.id, amount: priorityAmount },
+      });
+      return { ok: true, id: created.id, priorityRedirect: tx.authorization_url };
+    } catch (e) {
+      // If init fails, just keep the request without priority paid.
+      console.error("[order] priority init failed", e);
+    }
+  }
+
   return { ok: true, id: created.id };
 }
 
-// Called by admin on approval — inserts suggested matches into
-// lead_notifications with email_sent=false. Admin can edit before sending.
+// Auto-suggest matches (still used by admin approval)
 export async function suggestMatches(requestId: string): Promise<{ suggested: number }> {
   const sb = supabaseAdmin();
   const { data: req } = await sb
@@ -194,17 +289,17 @@ export async function suggestMatches(requestId: string): Promise<{ suggested: nu
   return { suggested };
 }
 
-// Send emails to all unsent notifications for a request. Returns count sent.
 export async function sendPendingLeadEmails(requestId: string): Promise<{ sent: number }> {
   const sb = supabaseAdmin();
   const { data: req } = await sb
     .from("lead_requests")
-    .select("id, location, budget_min, budget_max, unlock_credits, categories(name)")
+    .select("id, location, budget_min, budget_max, unlock_credits, is_priority, priority_paid, categories(name)")
     .eq("id", requestId)
     .single();
   if (!req) return { sent: 0 };
   const industryName = (req as any).categories?.name ?? "your industry";
   const budgetStr = formatBudgetRange(req.budget_min, req.budget_max);
+  const priorityFlag = !!req.is_priority && !!req.priority_paid;
 
   const { data: pending } = await sb
     .from("lead_notifications")
@@ -222,7 +317,8 @@ export async function sendPendingLeadEmails(requestId: string): Promise<{ sent: 
         industryName,
         budget: budgetStr,
         location: req.location,
-        unlockCredits: req.unlock_credits,
+        unlockCredits: Number(req.unlock_credits),
+        priority: priorityFlag,
       });
       await sb
         .from("lead_notifications")

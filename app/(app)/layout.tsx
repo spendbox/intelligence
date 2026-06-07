@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const sb = supabaseAdmin();
   const { data: wallet } = await sb.from("wallets").select("credits").eq("user_id", session.userId).maybeSingle();
-  const credits = wallet?.credits ?? 0;
+  const credits = Number(wallet?.credits ?? 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -46,7 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <nav className="hidden items-center gap-5 text-sm md:flex">
             <NavLinks />
             <Link href="/business/wallet" className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
-              {credits.toLocaleString()} credits
+              {credits.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits
             </Link>
             <form action={logoutAction}>
               <button className="text-slate-500 hover:text-slate-900">Sign out</button>
@@ -68,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <nav className="absolute right-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
               <div className="flex flex-col p-2 text-sm">
                 <div className="px-3 py-2 text-xs text-slate-500">
-                  Balance: <span className="font-semibold text-brand">{credits.toLocaleString()} credits</span>
+                  Balance: <span className="font-semibold text-brand">{credits.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits</span>
                 </div>
                 <NavLinks className="rounded-md px-3 py-2 hover:bg-slate-50" />
                 <form action={logoutAction}>

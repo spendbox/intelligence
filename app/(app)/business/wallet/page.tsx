@@ -3,7 +3,7 @@ import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/settings";
 import { startTopupAction } from "./actions";
-import { nairaToCredits, TOPUP_MIN_NAIRA, TOPUP_MAX_NAIRA, formatNaira, MIN_NOTIFICATION_CREDITS } from "@/lib/leads";
+import { nairaToCredits, TOPUP_MIN_NAIRA, TOPUP_MAX_NAIRA, formatNaira, formatCredits, MIN_NOTIFICATION_CREDITS } from "@/lib/leads";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { sta
   const npc = settings.naira_per_credit || 10;
 
   const { data: wallet } = await sb.from("wallets").select("credits, total_topup_naira").eq("user_id", session.userId!).maybeSingle();
-  const credits = wallet?.credits ?? 0;
+  const credits = Number(wallet?.credits ?? 0);
 
   const { data: tx } = await sb
     .from("wallet_transactions")
@@ -46,7 +46,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { sta
 
       <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-brand/10 to-fuchsia-50 p-5 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Balance</p>
-        <p className="mt-1 text-4xl font-bold tracking-tight text-brand">{credits.toLocaleString()}</p>
+        <p className="mt-1 text-4xl font-bold tracking-tight text-brand">{formatCredits(credits)}</p>
         <p className="text-xs text-slate-600">credits · worth ~{formatNaira(credits * npc)}</p>
         {credits < MIN_NOTIFICATION_CREDITS && (
           <p className="mt-2 text-xs text-amber-700">
@@ -67,7 +67,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { sta
               value={amt}
               className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              {formatNaira(amt)} · +{nairaToCredits(amt, npc).toLocaleString()} credits
+              {formatNaira(amt)} · +{formatCredits(nairaToCredits(amt, npc))} credits
             </button>
           ))}
         </div>
