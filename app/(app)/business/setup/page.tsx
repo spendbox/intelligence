@@ -1,6 +1,7 @@
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { saveBusinessSetupAction } from "./actions";
+import IndustryPicker from "./IndustryPicker";
 import { BUDGET_PRESETS } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
@@ -73,58 +74,8 @@ export default async function BusinessSetupPage({ searchParams }: { searchParams
         {/* Industries */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold">Industries you serve</h2>
-          <p className="mt-1 text-xs text-slate-500">Pick up to 3 industries.</p>
-          <div id="industries" className="mt-3 grid gap-2 sm:grid-cols-2">
-            {(categories ?? []).map((c) => (
-              <label
-                key={c.id}
-                className="industry-row group relative flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition has-[:checked]:border-brand has-[:checked]:bg-brand/5 has-[:checked]:ring-1 has-[:checked]:ring-brand/20 has-[:disabled:not(:checked)]:cursor-not-allowed has-[:disabled:not(:checked)]:border-slate-100 has-[:disabled:not(:checked)]:bg-slate-50 has-[:disabled:not(:checked)]:opacity-50 hover:bg-slate-50"
-              >
-                <input type="checkbox" name="category" value={c.id} defaultChecked={selectedCats.has(c.id)} className="industry-cb h-4 w-4 accent-brand" />
-                <span>{c.name}</span>
-                <svg
-                  className="lock-icon ml-auto h-4 w-4 hidden text-slate-400"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V7a4 4 0 018 0v4" />
-                </svg>
-              </label>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            <span id="industry-count">0</span> / 3 selected — others lock once you pick three.
-          </p>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `(() => {
-                const root = document.getElementById('industries');
-                if (!root) return;
-                const labels = Array.from(root.querySelectorAll('.industry-row'));
-                const inputs = labels.map(l => l.querySelector('.industry-cb'));
-                const counter = document.getElementById('industry-count');
-                const update = () => {
-                  const checked = inputs.filter(i => i && i.checked);
-                  if (counter) counter.textContent = String(checked.length);
-                  const max = checked.length >= 3;
-                  inputs.forEach((i, idx) => {
-                    if (!i) return;
-                    if (!i.checked) i.disabled = max;
-                    const lock = labels[idx].querySelector('.lock-icon');
-                    if (lock) lock.classList.toggle('hidden', !(max && !i.checked));
-                  });
-                };
-                inputs.forEach(i => i && i.addEventListener('change', update));
-                update();
-              })();`,
-            }}
-          />
+          <p className="mt-1 text-xs text-slate-500">Pick up to 3 industries. Others lock once 3 are selected.</p>
+          <IndustryPicker industries={(categories ?? []).map((c) => ({ id: c.id, name: c.name }))} initial={Array.from(selectedCats)} />
         </section>
 
         {/* Locations */}

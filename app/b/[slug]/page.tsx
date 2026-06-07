@@ -2,41 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { IndustryIcon } from "@/lib/industryIcons";
+import { SocialIcon, buildSocials } from "@/lib/socials";
 
 export const dynamic = "force-dynamic";
-
-type Social = { label: string; href: string };
-
-function normalizeUrl(input: string | null | undefined, prefix?: (h: string) => string): string | null {
-  if (!input) return null;
-  const v = input.trim();
-  if (!v) return null;
-  if (/^https?:\/\//i.test(v)) return v;
-  if (v.startsWith("@") && prefix) return prefix(v.slice(1));
-  if (prefix) return prefix(v.replace(/^\//, ""));
-  return `https://${v}`;
-}
-
-function buildSocials(b: any): Social[] {
-  const out: Social[] = [];
-  const website = normalizeUrl(b.website);
-  if (website) out.push({ label: "Website", href: website });
-  const ig = normalizeUrl(b.instagram, (h) => `https://instagram.com/${h}`);
-  if (ig) out.push({ label: "Instagram", href: ig });
-  const tw = normalizeUrl(b.twitter, (h) => `https://x.com/${h}`);
-  if (tw) out.push({ label: "X / Twitter", href: tw });
-  const tk = normalizeUrl(b.tiktok, (h) => `https://tiktok.com/@${h}`);
-  if (tk) out.push({ label: "TikTok", href: tk });
-  const fb = normalizeUrl(b.facebook, (h) => `https://facebook.com/${h}`);
-  if (fb) out.push({ label: "Facebook", href: fb });
-  const li = normalizeUrl(b.linkedin, (h) => `https://linkedin.com/${h}`);
-  if (li) out.push({ label: "LinkedIn", href: li });
-  if (b.whatsapp) {
-    const num = String(b.whatsapp).replace(/[^\d]/g, "");
-    if (num) out.push({ label: "WhatsApp", href: `https://wa.me/${num}` });
-  }
-  return out;
-}
+export const revalidate = 0;
 
 export default async function PublicBusinessPage({ params }: { params: { slug: string } }) {
   const sb = supabaseAdmin();
@@ -119,14 +88,16 @@ export default async function PublicBusinessPage({ params }: { params: { slug: s
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Connect</p>
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {socials.map((s) => (
-                    <li key={s.label}>
+                    <li key={s.key}>
                       <a
                         href={s.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:border-brand hover:text-brand"
+                        aria-label={s.label}
+                        title={s.label}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brand"
                       >
-                        {s.label} →
+                        <SocialIcon kind={s.key} className="h-4 w-4" />
                       </a>
                     </li>
                   ))}
@@ -146,7 +117,10 @@ export default async function PublicBusinessPage({ params }: { params: { slug: s
         )}
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          Powered by <Link href="/" className="font-medium text-slate-500 hover:text-slate-700">folio.cafe</Link>
+          Powered by{" "}
+          <Link href="/" className="font-medium text-slate-500 hover:text-slate-700">
+            folio.cafe
+          </Link>
         </p>
       </div>
     </main>

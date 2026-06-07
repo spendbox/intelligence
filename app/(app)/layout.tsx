@@ -9,6 +9,7 @@ const navItems = [
   { href: "/business/leads", label: "Leads" },
   { href: "/business/wallet", label: "Wallet" },
   { href: "/business/profile", label: "My Page" },
+  { href: "/business/compliance", label: "Compliance" },
   { href: "/account/pin", label: "PIN" },
 ];
 
