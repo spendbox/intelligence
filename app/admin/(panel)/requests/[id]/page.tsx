@@ -5,6 +5,7 @@ import { formatBudgetRange } from "@/lib/leads";
 import {
   addMatchAction,
   approveRequestAction,
+  deleteRequestAction,
   rejectRequestAction,
   removeMatchAction,
   sendMatchedEmailsAction,
@@ -69,6 +70,12 @@ export default async function AdminRequestDetail({
             Preview as business ↗
           </Link>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">{r.status}</span>
+          <form action={deleteRequestAction}>
+            <input type="hidden" name="id" value={r.id} />
+            <button className="rounded-md border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50">
+              Delete request
+            </button>
+          </form>
         </div>
       </div>
 

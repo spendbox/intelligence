@@ -85,3 +85,12 @@ export async function sendMatchedEmailsAction(formData: FormData) {
   const { sent } = await sendPendingLeadEmails(requestId);
   redirect(`/admin/requests/${requestId}?ok=sent&n=${sent}`);
 }
+
+export async function deleteRequestAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/admin/requests");
+  const sb = supabaseAdmin();
+  await sb.from("lead_requests").delete().eq("id", id);
+  redirect("/admin/requests?ok=deleted");
+}
