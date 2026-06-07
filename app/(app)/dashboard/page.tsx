@@ -1,104 +1,97 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { MIN_NOTIFICATION_CREDITS, formatBudgetRange } from "@/lib/leads";
 
-function formatStatus(status: string, subActive: boolean) {
-  if (status === "trialing") return "Free Trial";
-  if (status === "active" || subActive) return "Active";
-  if (status === "canceled") return "Canceled";
-  return status;
-}
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await getUserSession();
   const sb = supabaseAdmin();
 
-  const { data: user } = await sb
-    .from("users")
-    .select("email, status, trial_ends_at, subscription_ends_at, subscription_plan")
-    .eq("id", session.userId!)
-    .single();
-
-  const { count: categoryCount } = await sb
-    .from("user_categories")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", session.userId!);
-
-  const { data: deliveries } = await sb
-    .from("email_deliveries")
-    .select("id, created_at, status, insight_drafts(id, subject, sent_at, categories(name))")
+  const { data: business } = await sb
+    .from("businesses")
+    .select("id, display_name, business_name, setup_complete, verified")
     .eq("user_id", session.userId!)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .maybeSingle();
 
-  const subActive = !!user?.subscription_ends_at && new Date(user.subscription_ends_at) > new Date();
+  if (!business || !business.setup_complete) redirect("/business/setup");
+
+  const { data: wallet } = await sb.from("wallets").select("credits").eq("user_id", session.userId!).maybeSingle();
+  const credits = wallet?.credits ?? 0;
+
+  const { data: recent } = await sb
+    .from("lead_notifications")
+    .select("sent_at, lead_requests(id, location, budget_min, budget_max, unlock_credits, categories(name))")
+    .eq("business_id", business.id)
+    .order("sent_at", { ascending: false })
+    .limit(5);
+
+  const { count: unlockCount } = await sb
+    .from("lead_unlocks")
+    .select("*", { count: "exact", head: true })
+    .eq("business_id", business.id);
+
+  const eligible = credits >= MIN_NOTIFICATION_CREDITS;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="mt-1 text-sm text-slate-600">{user?.email}</p>
+        <h1 className="text-2xl font-bold tracking-tight">{business.business_name || business.display_name || "Welcome"}</h1>
+        <p className="mt-1 text-sm text-slate-600">Your dashboard at a glance.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Plan</p>
-          <p className="mt-1 text-lg font-semibold">{formatStatus(user?.status ?? "", subActive)}</p>
-          {user?.status === "trialing" && user?.trial_ends_at && (
-            <p className="mt-1 text-sm text-slate-600">
-              Trial ends {new Date(user.trial_ends_at).toLocaleDateString()}
-            </p>
-          )}
-          {subActive && (
-            <p className="mt-1 text-sm text-slate-600">
-              {user?.subscription_plan === "yearly" ? "Yearly" : "Monthly"} · renews{" "}
-              {new Date(user!.subscription_ends_at!).toLocaleDateString()}
-            </p>
-          )}
-          <Link href="/subscription" className="mt-3 inline-block text-sm font-medium text-brand">
-            Manage plan →
-          </Link>
+      {!eligible && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          You need at least <strong>{MIN_NOTIFICATION_CREDITS} credits</strong> to start receiving lead notifications.{" "}
+          <Link href="/business/wallet" className="font-semibold underline">Top up your wallet →</Link>
         </div>
+      )}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Selected categories</p>
-          <p className="mt-1 text-lg font-semibold">{categoryCount ?? 0}</p>
-          <Link href="/categories" className="mt-3 inline-block text-sm font-medium text-brand">
-            Change categories →
-          </Link>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Stat label="Wallet" value={`${credits.toLocaleString()}`} hint="credits" />
+        <Stat label="Leads unlocked" value={String(unlockCount ?? 0)} hint="total" />
+        <Stat label="Status" value={business.verified ? "Verified" : "Unverified"} hint="business" />
       </div>
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Recent insights</h2>
-          <span className="text-xs text-slate-500">Last 10</span>
+          <h2 className="text-base font-semibold">Recent leads matched to you</h2>
+          <Link href="/business/leads" className="text-sm font-medium text-brand">View all →</Link>
         </div>
-        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {(deliveries ?? []).length === 0 ? (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {(recent ?? []).length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-slate-500">
-              No insights yet. Up to 10 actionable insights are sent every month based on your selected categories.
+              No leads yet. Once you have {MIN_NOTIFICATION_CREDITS}+ credits, matching requests will land here.
             </p>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {(deliveries ?? []).map((d: any) => (
-                <li key={d.id} className="flex items-start justify-between gap-4 px-5 py-3">
+              {(recent ?? []).map((row: any) => (
+                <li key={row.lead_requests?.id ?? row.sent_at} className="flex items-center justify-between gap-4 px-5 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{d.insight_drafts?.subject ?? "Insight"}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {d.insight_drafts?.categories?.name ?? "—"} ·{" "}
-                      {new Date(d.insight_drafts?.sent_at ?? d.created_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-sm font-medium">{row.lead_requests?.categories?.name ?? "Lead"} · {row.lead_requests?.location}</p>
+                    <p className="text-xs text-slate-500">{formatBudgetRange(row.lead_requests?.budget_min ?? 0, row.lead_requests?.budget_max ?? 0)}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium capitalize text-slate-600">
-                    {d.status}
-                  </span>
+                  <Link href={`/business/leads/${row.lead_requests?.id}`} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                    Open
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
         </div>
       </section>
+    </div>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight">{value}</p>
+      <p className="text-xs text-slate-500">{hint}</p>
     </div>
   );
 }

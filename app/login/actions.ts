@@ -16,6 +16,7 @@ import {
   getUserSession,
   PIN_SETUP_MAX_AGE_MS,
 } from "@/lib/auth/session";
+import { env } from "@/lib/env";
 
 const EmailSchema = z.object({ email: z.string().email() });
 const PinSchema = z.object({ pin: z.string().regex(/^\d{4}$/) });
@@ -55,8 +56,20 @@ export async function continueLoginAction(formData: FormData) {
   });
   if (!parsed.success) redirect("/login?error=invalid_email");
 
-  const user = await loadUser(parsed.data.email);
-  if (!user) redirect("/login?error=unknown_email");
+  const sb = supabaseAdmin();
+  let user = await loadUser(parsed.data.email);
+
+  if (!user) {
+    // Unified signup: first time someone signs in, we create the business account.
+    const trialEnds = new Date(Date.now() + env.trialDays() * 24 * 60 * 60 * 1000).toISOString();
+    const { data: created } = await sb
+      .from("users")
+      .insert({ email: parsed.data.email, trial_ends_at: trialEnds, status: "trialing" })
+      .select("id, email, pin_hash, first_login_at")
+      .single();
+    if (!created) redirect("/login?error=email_failed");
+    user = created;
+  }
 
   if (user.pin_hash) {
     redirect(`/login/pin?email=${encodeURIComponent(user.email)}`);
@@ -89,16 +102,12 @@ export async function signInWithPinAction(formData: FormData) {
   await session.save();
 
   const sb = supabaseAdmin();
-  const { count } = await sb
-    .from("user_categories")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
-
   if (!user.first_login_at) {
     await sb.from("users").update({ first_login_at: new Date().toISOString() }).eq("id", user.id);
   }
 
-  if ((count ?? 0) === 0) redirect("/categories?welcome=1");
+  const { data: biz } = await sb.from("businesses").select("setup_complete").eq("user_id", user.id).maybeSingle();
+  if (!biz || !biz.setup_complete) redirect("/business/setup");
   redirect("/dashboard");
 }
 
@@ -186,14 +195,11 @@ export async function createPinAction(formData: FormData) {
   session.userId = userId;
   await session.save();
 
-  const { count } = await sb
-    .from("user_categories")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
   if (!(await sb.from("users").select("first_login_at").eq("id", userId).single()).data?.first_login_at) {
     await sb.from("users").update({ first_login_at: new Date().toISOString() }).eq("id", userId);
   }
-  if ((count ?? 0) === 0) redirect("/categories?welcome=1");
+  const { data: biz } = await sb.from("businesses").select("setup_complete").eq("user_id", userId).maybeSingle();
+  if (!biz || !biz.setup_complete) redirect("/business/setup");
   redirect("/dashboard");
 }
 

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { signupAction } from "./signup/actions";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { IndustryIcon } from "@/lib/industryIcons";
 
@@ -87,44 +86,34 @@ export default async function HomePage({ searchParams }: { searchParams: { error
           </div>
 
           <h1 className="animate-fade-up delay-100 mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-            The unfair advantage{" "}
+            Get the leads.{" "}
             <span className="bg-gradient-to-r from-brand-light via-fuchsia-300 to-rose-200 bg-clip-text text-transparent animate-shimmer">
-              your business needs
+              Close the business.
             </span>
-            .
           </h1>
 
           <p className="animate-fade-up delay-200 mt-5 max-w-xl text-lg text-white/70 sm:text-xl">
-            Stay ahead of the competition. Up to <span className="font-semibold text-white">10 actionable insights</span>{" "}
-            in your inbox every month — picked for your industry, built to save you time, money and guesswork.
+            Folio is where customers post what they need — and trusted businesses in their industry, area and budget reach out directly.
           </p>
 
-          <form
-            action={signupAction}
-            className="animate-fade-up delay-300 mt-8 rounded-2xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                type="email"
-                name="email"
-                required
-                autoComplete="email"
-                inputMode="email"
-                placeholder="you@business.com"
-                className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base text-white placeholder-white/40 outline-none transition focus:bg-white/10"
-              />
-              <button
-                type="submit"
-                className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-brand to-fuchsia-500 px-5 py-3 text-base font-semibold text-white shadow-[0_10px_30px_-10px_rgba(124,58,237,0.8)] transition hover:shadow-[0_18px_40px_-10px_rgba(124,58,237,1)] active:scale-[0.99]"
-              >
-                <span className="relative z-10">Start free trial →</span>
-                <span className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-500 group-hover:translate-x-0" />
-              </button>
-            </div>
-            <p className="mt-2 px-2 text-center text-xs text-white/50 sm:text-left">
-              No card required. Yearly subscription coming soon.
-            </p>
-          </form>
+          <div className="animate-fade-up delay-300 mt-8 grid gap-3 sm:grid-cols-2">
+            <Link
+              href="/order"
+              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-fuchsia-500 p-5 shadow-[0_10px_30px_-10px_rgba(124,58,237,0.8)] transition hover:shadow-[0_18px_40px_-10px_rgba(124,58,237,1)]"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">Looking for a service?</p>
+              <p className="mt-2 text-lg font-bold text-white">Post a request →</p>
+              <p className="mt-1 text-sm text-white/80">Free. Tell us what you need, get matched with vetted businesses.</p>
+            </Link>
+            <Link
+              href="/login"
+              className="group relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md transition hover:bg-white/10"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Run a business?</p>
+              <p className="mt-2 text-lg font-bold text-white">Get leads →</p>
+              <p className="mt-1 text-sm text-white/60">Sign up free. Unlock contact details with credits when leads match.</p>
+            </Link>
+          </div>
 
           {searchParams.error && (
             <p className="animate-fade-up mt-4 rounded-md bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -211,12 +200,12 @@ export default async function HomePage({ searchParams }: { searchParams: { error
           </ul>
           <div className="mt-8 flex flex-col items-start gap-2">
             <Link
-              href="/"
+              href="/order"
               className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-ink shadow-[0_10px_30px_-10px_rgba(255,255,255,0.4)] transition hover:bg-white/90"
             >
-              Start your free trial →
+              Post your request — it's free →
             </Link>
-            <p className="text-xs text-white/40">Free for 30 days. Cancel anytime.</p>
+            <p className="text-xs text-white/40">No account needed. Email-verified in under a minute.</p>
           </div>
         </section>
 

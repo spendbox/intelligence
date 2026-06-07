@@ -20,13 +20,13 @@ export default function LoginPage({
       <div className="mx-auto max-w-md">
         <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">← Back</Link>
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-bold">Sign in</h1>
+          <h1 className="text-2xl font-bold">Sign in or sign up</h1>
           {searchParams.new && (
             <p className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
               Account created — enter your email to continue.
             </p>
           )}
-          <p className="mt-2 text-sm text-slate-600">We will email you a 4 digit code.</p>
+          <p className="mt-2 text-sm text-slate-600">Businesses only. We will email you a 4 digit code.</p>
 
           <form action={continueLoginAction} className="mt-5 space-y-3">
             <input
@@ -51,8 +51,8 @@ export default function LoginPage({
           )}
 
           <p className="mt-6 text-sm text-slate-600">
-            Don't have an account?{" "}
-            <Link href="/" className="font-medium text-brand">Start a free trial</Link>
+            Looking for a service instead?{" "}
+            <Link href="/order" className="font-medium text-brand">Post a request</Link>
           </p>
         </div>
       </div>

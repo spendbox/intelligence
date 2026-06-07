@@ -4,8 +4,9 @@ import { getAdminSession } from "@/lib/auth/session";
 import { adminLogoutAction } from "../login/actions";
 
 const items = [
+  { href: "/admin/requests", label: "Requests" },
   { href: "/admin/insights", label: "Insights" },
-  { href: "/admin/categories", label: "Categories" },
+  { href: "/admin/categories", label: "Industries" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/deliveries", label: "Deliveries" },
   { href: "/admin/settings", label: "Settings" },

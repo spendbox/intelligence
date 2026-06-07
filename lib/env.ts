@@ -22,5 +22,7 @@ export const env = {
   paystackSecret: () => required("PAYSTACK_SECRET_KEY"),
   paystackSecretSafe: () => process.env.PAYSTACK_SECRET_KEY ?? "",
   openaiKey: () => required("OPENAI_API_KEY"),
+  openaiKeySafe: () => process.env.OPENAI_API_KEY ?? "",
   openaiModel: () => optional("OPENAI_MODEL", "gpt-4o-mini"),
+  adminNotificationEmail: () => optional("ADMIN_NOTIFICATION_EMAIL", "spendbox@gmail.com"),
 };
