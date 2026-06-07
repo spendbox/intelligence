@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { initializeTransaction } from "@/lib/paystack";
-import { env } from "@/lib/env";
+import { getOrigin } from "@/lib/originUrl";
 import { TOPUP_MAX_NAIRA, TOPUP_MIN_NAIRA } from "@/lib/leads";
 
 export async function startTopupAction(formData: FormData) {
@@ -29,7 +29,7 @@ export async function startTopupAction(formData: FormData) {
       email: user.email,
       amount: amount * 100, // Paystack expects kobo
       currency: "NGN",
-      callbackUrl: `${env.appUrl()}/api/paystack/wallet-callback`,
+      callbackUrl: `${getOrigin()}/api/paystack/wallet-callback`,
       reference,
       metadata: { user_id: session.userId, kind: "wallet_topup", naira: amount },
     });

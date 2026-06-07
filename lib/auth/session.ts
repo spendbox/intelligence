@@ -15,6 +15,7 @@ function userOpts(): SessionOptions {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
     },
   };
 }
@@ -28,6 +29,7 @@ function adminOpts(): SessionOptions {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
+      maxAge: 60 * 60 * 24 * 14, // 14 days
     },
   };
 }

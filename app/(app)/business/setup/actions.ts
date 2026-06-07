@@ -39,7 +39,7 @@ export async function saveBusinessSetupAction(formData: FormData) {
     .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, 30);
-  const categoryIds = formData.getAll("category").map(String).filter(Boolean);
+  const categoryIds = formData.getAll("category").map(String).filter(Boolean).slice(0, 3);
   const budgetIdxs = formData.getAll("budget").map((s) => parseInt(String(s), 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < BUDGET_PRESETS.length);
 
   if (!businessName || categoryIds.length === 0 || locations.length === 0 || budgetIdxs.length === 0) {
