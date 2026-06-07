@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { matchAndNotifyBusinesses } from "@/app/order/actions";
+import { suggestMatches, sendPendingLeadEmails } from "@/app/order/actions";
 import { sendOrderApprovedEmail } from "@/lib/email/leads";
 
 async function requireAdmin() {
@@ -23,24 +23,23 @@ export async function approveRequestAction(formData: FormData) {
     .select("id, status, email, name")
     .eq("id", id)
     .single();
-  if (!r || r.status !== "submitted") redirect(`/admin/requests/${id}`);
+  if (!r) redirect("/admin/requests");
 
-  await sb
-    .from("lead_requests")
-    .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: admin })
-    .eq("id", id);
+  if (r.status === "submitted") {
+    await sb
+      .from("lead_requests")
+      .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: admin })
+      .eq("id", id);
+    try {
+      await sendOrderApprovedEmail(r.email, r.name);
+    } catch {}
+  }
 
-  let matched = 0;
   try {
-    const out = await matchAndNotifyBusinesses(id);
-    matched = out.notified;
+    await suggestMatches(id);
   } catch {}
 
-  try {
-    await sendOrderApprovedEmail(r.email, r.name);
-  } catch {}
-
-  redirect(`/admin/requests/${id}?ok=1&matched=${matched}`);
+  redirect(`/admin/requests/${id}?ok=approved`);
 }
 
 export async function rejectRequestAction(formData: FormData) {
@@ -50,5 +49,39 @@ export async function rejectRequestAction(formData: FormData) {
   if (!id) redirect("/admin/requests");
   const sb = supabaseAdmin();
   await sb.from("lead_requests").update({ status: "rejected", reject_reason: reason }).eq("id", id);
-  redirect(`/admin/requests/${id}?ok=1`);
+  redirect(`/admin/requests/${id}?ok=rejected`);
+}
+
+export async function addMatchAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const requestId = String(formData.get("request_id") ?? "");
+  const businessId = String(formData.get("business_id") ?? "");
+  if (!requestId || !businessId) redirect(`/admin/requests/${requestId}`);
+  const sb = supabaseAdmin();
+  await sb
+    .from("lead_notifications")
+    .insert({ request_id: requestId, business_id: businessId, email_sent: false, added_by: admin });
+  redirect(`/admin/requests/${requestId}?ok=added`);
+}
+
+export async function removeMatchAction(formData: FormData) {
+  await requireAdmin();
+  const requestId = String(formData.get("request_id") ?? "");
+  const businessId = String(formData.get("business_id") ?? "");
+  const sb = supabaseAdmin();
+  await sb
+    .from("lead_notifications")
+    .delete()
+    .eq("request_id", requestId)
+    .eq("business_id", businessId)
+    .eq("email_sent", false); // safety: don't delete a notification we already emailed
+  redirect(`/admin/requests/${requestId}?ok=removed`);
+}
+
+export async function sendMatchedEmailsAction(formData: FormData) {
+  await requireAdmin();
+  const requestId = String(formData.get("request_id") ?? "");
+  if (!requestId) redirect("/admin/requests");
+  const { sent } = await sendPendingLeadEmails(requestId);
+  redirect(`/admin/requests/${requestId}?ok=sent&n=${sent}`);
 }

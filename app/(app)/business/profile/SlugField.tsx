@@ -4,15 +4,23 @@ import { useEffect, useRef, useState } from "react";
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+type State = "idle" | "checking" | "available" | "taken" | "invalid";
+
 export default function SlugField({
   initial,
   publicBase,
+  value,
+  onChange,
 }: {
   initial: string;
   publicBase: string;
+  value?: string;
+  onChange?: (v: string) => void;
 }) {
-  const [slug, setSlug] = useState(initial);
-  const [state, setState] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const controlled = value !== undefined;
+  const [innerSlug, setInnerSlug] = useState(initial);
+  const slug = controlled ? (value ?? "") : innerSlug;
+  const [state, setState] = useState<State>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -60,6 +68,12 @@ export default function SlugField({
     invalid: "text-rose-600",
   }[state];
 
+  function set(v: string) {
+    const next = v.toLowerCase();
+    if (controlled) onChange?.(next);
+    else setInnerSlug(next);
+  }
+
   return (
     <div>
       <label className="text-sm font-medium">Your URL</label>
@@ -68,7 +82,7 @@ export default function SlugField({
         <input
           name="slug"
           value={slug}
-          onChange={(e) => setSlug(e.target.value.toLowerCase())}
+          onChange={(e) => set(e.target.value)}
           required
           minLength={3}
           maxLength={60}

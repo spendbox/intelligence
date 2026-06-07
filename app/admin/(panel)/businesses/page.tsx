@@ -109,6 +109,12 @@ export default async function AdminBusinessesPage({ searchParams }: { searchPara
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex flex-wrap justify-end gap-2">
                     <Link
+                      href={`/admin/businesses/${b.id}`}
+                      className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Open
+                    </Link>
+                    <Link
                       href={`/b/${b.slug}`}
                       target="_blank"
                       className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"

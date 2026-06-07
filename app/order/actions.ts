@@ -158,29 +158,27 @@ export async function submitOrderAction(formData: FormData): Promise<{ ok: boole
   return { ok: true, id: created.id };
 }
 
-// Used by admin matching after approval
-export async function matchAndNotifyBusinesses(requestId: string) {
+// Called by admin on approval — inserts suggested matches into
+// lead_notifications with email_sent=false. Admin can edit before sending.
+export async function suggestMatches(requestId: string): Promise<{ suggested: number }> {
   const sb = supabaseAdmin();
   const { data: req } = await sb
     .from("lead_requests")
-    .select("id, location, budget_min, budget_max, category_id, unlock_credits, categories(name)")
+    .select("id, location, budget_min, budget_max, category_id")
     .eq("id", requestId)
     .single();
-  if (!req) return { notified: 0 };
+  if (!req) return { suggested: 0 };
 
   let q = sb
     .from("businesses")
-    .select("id, user_id, users!inner(email), business_categories!inner(category_id), business_locations(location), business_budget_ranges(budget_min, budget_max), wallets!inner(credits)")
+    .select("id, business_categories!inner(category_id), business_locations(location), business_budget_ranges(budget_min, budget_max), wallets!inner(credits)")
     .eq("setup_complete", true)
     .gte("wallets.credits", MIN_NOTIFICATION_CREDITS);
   if (req.category_id) q = q.eq("business_categories.category_id", req.category_id);
-  const { data: matches } = await q;
+  const { data: candidates } = await q;
 
-  const industryName = (req as any).categories?.name ?? "your industry";
-  const budgetStr = formatBudgetRange(req.budget_min, req.budget_max);
-  let notified = 0;
-
-  for (const m of (matches ?? []) as any[]) {
+  let suggested = 0;
+  for (const m of (candidates ?? []) as any[]) {
     const locs = (m.business_locations ?? []).map((r: any) => r.location);
     if (locs.length > 0 && !locationsMatch(locs, req.location)) continue;
     const ranges = (m.business_budget_ranges ?? []) as { budget_min: number; budget_max: number }[];
@@ -188,22 +186,50 @@ export async function matchAndNotifyBusinesses(requestId: string) {
       const ok = ranges.some((r) => r.budget_max >= req.budget_min && r.budget_min <= req.budget_max);
       if (!ok) continue;
     }
-
-    const { error: insErr } = await sb
+    const { error } = await sb
       .from("lead_notifications")
-      .insert({ request_id: req.id, business_id: m.id });
-    if (insErr) continue; // already notified
+      .insert({ request_id: req.id, business_id: m.id, email_sent: false, added_by: "auto" });
+    if (!error) suggested++;
+  }
+  return { suggested };
+}
 
+// Send emails to all unsent notifications for a request. Returns count sent.
+export async function sendPendingLeadEmails(requestId: string): Promise<{ sent: number }> {
+  const sb = supabaseAdmin();
+  const { data: req } = await sb
+    .from("lead_requests")
+    .select("id, location, budget_min, budget_max, unlock_credits, categories(name)")
+    .eq("id", requestId)
+    .single();
+  if (!req) return { sent: 0 };
+  const industryName = (req as any).categories?.name ?? "your industry";
+  const budgetStr = formatBudgetRange(req.budget_min, req.budget_max);
+
+  const { data: pending } = await sb
+    .from("lead_notifications")
+    .select("id, business_id, businesses(users(email))")
+    .eq("request_id", requestId)
+    .eq("email_sent", false);
+
+  let sent = 0;
+  for (const n of (pending ?? []) as any[]) {
+    const email = n.businesses?.users?.email;
+    if (!email) continue;
     try {
-      await sendBusinessLeadEmail(m.users.email, {
-        requestId: req.id,
+      await sendBusinessLeadEmail(email, {
+        requestId,
         industryName,
         budget: budgetStr,
         location: req.location,
         unlockCredits: req.unlock_credits,
       });
-      notified++;
+      await sb
+        .from("lead_notifications")
+        .update({ email_sent: true, sent_at: new Date().toISOString() })
+        .eq("id", n.id);
+      sent++;
     } catch {}
   }
-  return { notified };
+  return { sent };
 }

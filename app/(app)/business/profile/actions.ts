@@ -34,9 +34,8 @@ const ProfileSchema = z.object({
   whatsapp: z.string().max(40).optional().nullable(),
 });
 
-export async function saveProfileAction(formData: FormData) {
-  const { sb, biz } = await requireBusiness();
-  const parsed = ProfileSchema.safeParse({
+function parseProfile(formData: FormData) {
+  return ProfileSchema.safeParse({
     business_name: String(formData.get("business_name") ?? "").trim(),
     display_name: String(formData.get("display_name") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
@@ -51,15 +50,32 @@ export async function saveProfileAction(formData: FormData) {
     tiktok: String(formData.get("tiktok") ?? "").trim() || null,
     whatsapp: String(formData.get("whatsapp") ?? "").trim() || null,
   });
-  if (!parsed.success) redirect("/business/profile?error=invalid");
+}
 
+export async function saveProfileAction(formData: FormData) {
+  const { sb, biz } = await requireBusiness();
+  const parsed = parseProfile(formData);
+  if (!parsed.success) redirect("/business/profile?error=invalid");
   if (parsed.data.slug !== biz.slug) {
     const { data: taken } = await sb.from("businesses").select("id").eq("slug", parsed.data.slug).maybeSingle();
     if (taken) redirect("/business/profile?error=slug_taken");
   }
-
   await sb.from("businesses").update(parsed.data).eq("id", biz.id);
   redirect("/business/profile?saved=1");
+}
+
+// Used by the auto-save client form — returns result instead of redirecting.
+export async function autoSaveProfileAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const { sb, biz } = await requireBusiness();
+  const parsed = parseProfile(formData);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  if (parsed.data.slug !== biz.slug) {
+    const { data: taken } = await sb.from("businesses").select("id").eq("slug", parsed.data.slug).maybeSingle();
+    if (taken) return { ok: false, error: "slug_taken" };
+  }
+  const { error } = await sb.from("businesses").update(parsed.data).eq("id", biz.id);
+  if (error) return { ok: false, error: "server" };
+  return { ok: true };
 }
 
 export async function uploadLogoAction(formData: FormData) {

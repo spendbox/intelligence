@@ -21,14 +21,7 @@ export default async function BusinessLeadDetail({ params, searchParams }: { par
     .maybeSingle();
   if (!r) notFound();
 
-  // confirm this business was actually notified
-  const { data: notified } = await sb
-    .from("lead_notifications")
-    .select("business_id")
-    .eq("request_id", r.id)
-    .eq("business_id", business.id)
-    .maybeSingle();
-  if (!notified) notFound();
+  if (r.status !== "approved") notFound();
 
   const { data: unlock } = await sb
     .from("lead_unlocks")
