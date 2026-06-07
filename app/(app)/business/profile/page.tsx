@@ -4,15 +4,13 @@ import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getOrigin } from "@/lib/originUrl";
 import SlugField from "./SlugField";
-import {
-  deleteGalleryItemAction,
-  removeLogoAction,
-  saveProfileAction,
-  uploadGalleryAction,
-  uploadLogoAction,
-} from "./actions";
+import LogoUploader from "./LogoUploader";
+import GalleryUploader from "./GalleryUploader";
+import { saveProfileAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const GALLERY_CAP = 12;
 
 export default async function ProfilePage({ searchParams }: { searchParams: { saved?: string; error?: string } }) {
   const session = await getUserSession();
@@ -31,57 +29,33 @@ export default async function ProfilePage({ searchParams }: { searchParams: { sa
     .order("sort_order", { ascending: true });
 
   const origin = getOrigin().replace(/\/$/, "");
+  const capRemaining = Math.max(0, GALLERY_CAP - (gallery?.length ?? 0));
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Your public page</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Share with clients. <Link href={`/b/${business.slug}`} className="font-medium text-brand">View page →</Link>
+          Share with clients. <Link href={`/b/${business.slug}`} target="_blank" className="font-medium text-brand">View page ↗</Link>
         </p>
       </div>
 
       {searchParams.saved && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>}
       {searchParams.error && (
         <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {searchParams.error === "slug_taken" ? "That URL is taken — pick another." : "Couldn't save your changes."}
+          {searchParams.error === "slug_taken"
+            ? "That URL is taken — pick another."
+            : searchParams.error === "upload"
+            ? "Couldn't upload that file. Make sure it's an image under 5MB."
+            : "Couldn't save your changes."}
         </p>
       )}
 
       {/* Logo */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold">Logo</h2>
-        <div className="mt-3 flex items-center gap-4">
-          <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-            {business.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={business.logo_url} alt="Logo" className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-2xl font-bold text-slate-300">
-                {(business.business_name || business.display_name || "F").slice(0, 1).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <form action={uploadLogoAction} encType="multipart/form-data" className="flex-1 space-y-2">
-            <input
-              type="file"
-              name="logo"
-              accept="image/*"
-              required
-              className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-dark"
-            />
-            <button className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">
-              Upload
-            </button>
-          </form>
-          {business.logo_url && (
-            <form action={removeLogoAction}>
-              <button className="rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50">
-                Remove
-              </button>
-            </form>
-          )}
-        </div>
+        <p className="mt-1 text-xs text-slate-500">PNG or JPG, max 5MB. Uploads automatically.</p>
+        <LogoUploader currentUrl={business.logo_url} fallbackInitial={business.business_name || business.display_name || "F"} />
       </section>
 
       {/* Profile details */}
@@ -121,38 +95,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: { sa
       {/* Gallery */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold">Gallery</h2>
-        <p className="mt-1 text-xs text-slate-500">Up to 12 images. JPG/PNG, max 5MB each.</p>
-
-        <form action={uploadGalleryAction} encType="multipart/form-data" className="mt-3 space-y-2">
-          <input
-            type="file"
-            name="images"
-            accept="image/*"
-            multiple
-            required
-            className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-dark"
-          />
-          <button className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">
-            Upload images
-          </button>
-        </form>
-
-        {(gallery ?? []).length > 0 && (
-          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {(gallery ?? []).map((g) => (
-              <li key={g.id} className="group relative overflow-hidden rounded-xl border border-slate-200">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={g.url} alt={g.caption ?? ""} className="aspect-square w-full object-cover" />
-                <form action={deleteGalleryItemAction} className="absolute right-2 top-2 opacity-0 transition group-hover:opacity-100">
-                  <input type="hidden" name="id" value={g.id} />
-                  <button className="rounded-full bg-rose-600/90 px-2 py-1 text-xs font-medium text-white shadow hover:bg-rose-700">
-                    Delete
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="mt-1 text-xs text-slate-500">Up to {GALLERY_CAP} images. JPG/PNG, max 5MB each. Uploads start automatically.</p>
+        <GalleryUploader items={gallery ?? []} capRemaining={capRemaining} />
       </section>
 
       <Link href="/business/setup" className="inline-block text-sm font-medium text-brand">

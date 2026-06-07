@@ -4,7 +4,7 @@ import { getSettings } from "@/lib/settings";
 export const KOBO = 100;
 export const DEFAULT_NAIRA_PER_CREDIT = 10;      // ₦10 = 1 credit
 export const DEFAULT_UNLOCK_RATE = 0.00001;       // budget × this = credits
-export const MIN_NOTIFICATION_CREDITS = 500;
+export const MIN_NOTIFICATION_CREDITS = 1;
 export const UNLOCK_CAP_DEFAULT = 10;
 export const TOPUP_MIN_NAIRA = 1000;
 export const TOPUP_MAX_NAIRA = 1_000_000;
