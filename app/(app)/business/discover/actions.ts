@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/settings";
-import { buildQueries, type BusinessProfile } from "@/lib/discover/queries";
+import { buildSmartQueries, type BusinessProfile } from "@/lib/discover/queries";
 import { searchMany, domainOf } from "@/lib/discover/search";
 import { extractLeads } from "@/lib/discover/extract";
 
@@ -54,9 +54,7 @@ async function runScanInline(businessId: string, scanId: string, freeQuery: stri
     bio: (bizRes.data as any)?.bio ?? null,
   };
 
-  const queries = freeQuery
-    ? [freeQuery, ...buildQueries(profile).slice(0, 2)]
-    : buildQueries(profile);
+  const queries = await buildSmartQueries(profile, freeQuery);
   const hits = await searchMany(queries);
   const leads = await extractLeads(profile, hits);
 

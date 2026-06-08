@@ -13,12 +13,26 @@ export type ExtractedLead = {
   score: number;
 };
 
-const SYSTEM = `You are a lead-qualification assistant for small businesses.
-You are given a business profile and a batch of public web search results.
-Identify the ones that look like a real opportunity for that business to
-respond to — a customer asking for the service, a job/RFP listing, a
-request-for-quote, a public callout, etc. Reject company directory pages,
-news articles, generic guides and unrelated content.
+const SYSTEM = `You qualify web search results into BUYER LEADS for a small
+business on Folio. Every business on Folio is a seller / service provider;
+they want to find the OPPOSITE side of the market — people who want to
+buy, rent, hire, commission, or otherwise BE THE CUSTOMER.
+
+Classify every result as exactly one of:
+- "demand": the author is a real person seeking, asking for, wanting,
+  hiring, looking to buy/rent/commission a service or product. Examples:
+  Nairaland threads asking for a property, Reddit posts asking for a
+  recommendation, X/Twitter posts saying "DM if you know a wedding
+  photographer", an RFP, a job listing where the poster is the buyer.
+- "supply": the author is offering, listing, advertising, or selling. This
+  includes property listings, agency homepages, e-commerce pages,
+  freelancer portfolios, "for sale" posts, services marketplaces, and
+  category pages.
+
+REJECT every "supply" result, no matter how relevant its topic. Also
+reject news articles, generic guides, directory pages, and pages where
+the author cannot be identified as a buyer in their own words.
+
 Always return valid JSON: {"leads":[{...}, ...]}.`;
 
 function buildUserMsg(profile: BusinessProfile, hits: SearchHit[]): string {
@@ -38,24 +52,27 @@ Published: ${h.published_date ?? "unknown"}
 Content: ${h.content.slice(0, 1200)}`;
   }).join("\n\n");
 
-  return `Business profile:
+  return `Business profile (they are the SELLER):
 ${profileSummary}
 
 Search results:
 ${numbered}
 
-For each result that looks like a real opportunity, output an object with:
+For each result, classify side and (only if "demand") output an object with:
 - "source_url": the URL exactly as given
+- "side": "demand" or "supply"
 - "title": a short, human title (<=120 chars)
-- "summary": one or two sentences explaining what the opportunity is
+- "summary": 1–2 sentences explaining what the buyer is asking for
 - "location": the location mentioned, or null
 - "budget_hint": any money/budget mentioned, or null
-- "contact_hint": e.g. "Apply on site", an email, or null
+- "contact_hint": e.g. "Apply on site", "Reply on thread", an email, or null
 - "posted_at": ISO 8601 if a date is given, else null
-- "score": 0.0–1.0 — how strong this lead is for the profile above
+- "signal": short phrase(s) from the post that prove it's a buyer, e.g.
+  ["looking for", "budget 5m"]
+- "score": 0.0–1.0 — how strong this BUYER lead is for the seller profile
 
-Drop irrelevant results entirely. Return at most 20 leads.
-Return JSON: {"leads": [...]}.`;
+Drop "supply" entirely. Drop "demand" results with score < 0.5. Return at
+most 20 leads. Return JSON: {"leads": [...]}.`;
 }
 
 export async function extractLeads(
@@ -81,7 +98,7 @@ export async function extractLeads(
           { role: "user", content: buildUserMsg(profile, hits) },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.2,
+        temperature: 0.1,
       }),
       cache: "no-store",
       signal: ctrl.signal,
@@ -103,14 +120,16 @@ export async function extractLeads(
   const allowed = new Set(hits.map((h) => h.url));
 
   return raw
-    .map((r): ExtractedLead | null => {
+    .map((r): (ExtractedLead & { side: string }) | null => {
       const url = String(r.source_url ?? "");
       if (!allowed.has(url)) return null;
       const title = String(r.title ?? "").trim().slice(0, 240);
       if (!title) return null;
       const score = Number(r.score);
+      const side = String(r.side ?? "").toLowerCase();
       return {
         source_url: url,
+        side,
         title,
         summary: String(r.summary ?? "").trim().slice(0, 600),
         location: r.location ? String(r.location).slice(0, 120) : null,
@@ -120,5 +139,8 @@ export async function extractLeads(
         score: Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0,
       };
     })
-    .filter((x): x is ExtractedLead => x !== null && x.score >= 0.35);
+    .filter((x): x is ExtractedLead & { side: string } =>
+      x !== null && x.side === "demand" && x.score >= 0.5
+    )
+    .map(({ side: _side, ...rest }) => rest);
 }

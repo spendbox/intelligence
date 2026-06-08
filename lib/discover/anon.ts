@@ -1,5 +1,6 @@
 import { searchMany, domainOf } from "@/lib/discover/search";
 import { extractLeads } from "@/lib/discover/extract";
+import { buildSmartQueries, type BusinessProfile } from "@/lib/discover/queries";
 
 export type AnonLead = {
   title: string;
@@ -10,8 +11,8 @@ export type AnonLead = {
   score: number;
 };
 
-// A free, anonymous teaser scan for the landing page. Runs a single search
-// query and returns leads with their actionable details (source URL,
+// A free, anonymous teaser scan for the landing page. Runs demand-side
+// queries and returns leads with their actionable details (source URL,
 // contact) stripped — those only ever exist server-side and are never sent
 // to an anonymous browser. Visitors must sign in and spend credits to
 // reveal them.
@@ -19,8 +20,9 @@ export async function anonymousDiscover(query: string): Promise<AnonLead[]> {
   const q = query.trim().slice(0, 240);
   if (!q) return [];
 
-  const profile = { industries: [], locations: [], budgets: [], bio: null };
-  const hits = await searchMany([q]);
+  const profile: BusinessProfile = { industries: [], locations: [], budgets: [], bio: null };
+  const queries = await buildSmartQueries(profile, q);
+  const hits = await searchMany(queries);
   const leads = await extractLeads(profile, hits);
 
   return leads.slice(0, 8).map((l) => ({
