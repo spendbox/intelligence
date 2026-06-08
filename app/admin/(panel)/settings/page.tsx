@@ -99,28 +99,28 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           </div>
         </div>
 
-        {/* Discover (web-scan) economy */}
+        {/* Discover economy */}
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h2 className="text-sm font-semibold text-slate-800">Discover (web scan)</h2>
-          <p className="mt-1 text-xs text-slate-600">Cost and rate-limit for businesses tapping &quot;Scan the web for leads&quot;.</p>
+          <h2 className="text-sm font-semibold text-slate-800">Discover (web search)</h2>
+          <p className="mt-1 text-xs text-slate-600">Searching the web is free. Businesses pay credits to reveal each lead&apos;s source &amp; contact.</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium">Cost per scan (credits)</label>
+              <label className="text-sm font-medium">Cost per reveal (credits)</label>
               <input
                 type="number"
-                name="discover_scan_cost_credits"
+                name="discover_reveal_cost_credits"
                 step="1"
                 min="0"
                 required
-                defaultValue={s.discover_scan_cost_credits}
+                defaultValue={s.discover_reveal_cost_credits}
                 inputMode="numeric"
                 className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
-              <p className="mt-1 text-xs text-slate-500">Charged on tap, refunded if the scan fails.</p>
+              <p className="mt-1 text-xs text-slate-500">Charged when a business reveals a discovered lead.</p>
             </div>
             <div>
-              <label className="text-sm font-medium">Cooldown (seconds)</label>
+              <label className="text-sm font-medium">Search cooldown (seconds)</label>
               <input
                 type="number"
                 name="discover_scan_cooldown_seconds"
@@ -131,7 +131,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
                 inputMode="numeric"
                 className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
-              <p className="mt-1 text-xs text-slate-500">Minimum gap between consecutive scans per business.</p>
+              <p className="mt-1 text-xs text-slate-500">Minimum gap between consecutive searches per business.</p>
             </div>
           </div>
         </div>

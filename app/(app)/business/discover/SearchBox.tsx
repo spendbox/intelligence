@@ -4,36 +4,27 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { runDiscoveryScanAction } from "./actions";
 
-function ScanButton({ disabled }: { disabled: boolean }) {
+function SearchButton() {
   const { pending } = useFormStatus();
-  const isDisabled = disabled || pending;
   return (
     <button
       type="submit"
-      disabled={isDisabled}
+      disabled={pending}
       className={
         "rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition " +
-        (isDisabled
-          ? "cursor-not-allowed bg-slate-200 text-slate-500"
-          : "bg-brand text-white hover:bg-brand-dark")
+        (pending ? "cursor-wait bg-slate-200 text-slate-500" : "bg-brand text-white hover:bg-brand-dark")
       }
     >
-      {pending ? "Scanning the web…" : "Scan the web"}
+      {pending ? "Searching…" : "Search"}
     </button>
   );
 }
 
 export default function DiscoverSearchBox({
   defaultQuery,
-  cost,
-  credits,
-  disabled,
   suggestions,
 }: {
   defaultQuery: string;
-  cost: number;
-  credits: number;
-  disabled: boolean;
   suggestions: string[];
 }) {
   const [value, setValue] = useState(defaultQuery);
@@ -54,7 +45,7 @@ export default function DiscoverSearchBox({
           className="flex-1 bg-transparent py-1.5 text-base outline-none placeholder:text-slate-400"
           maxLength={240}
         />
-        <ScanButton disabled={disabled} />
+        <SearchButton />
       </div>
 
       <div className="mt-4 flex flex-wrap justify-center gap-2">

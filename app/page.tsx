@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { LogoMark } from "@/lib/logo";
+import { anonymousDiscover, type AnonLead } from "@/lib/discover/anon";
 
 export const dynamic = "force-dynamic";
+// The anonymous teaser search talks to Tavily + OpenAI; give it room.
+export const maxDuration = 90;
 
 const EXAMPLES = [
   "Wedding photographer in Lagos",
@@ -11,7 +14,20 @@ const EXAMPLES = [
   "Custom CRM for fintech",
 ];
 
-export default function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: { q?: string } }) {
+  const q = (searchParams.q ?? "").trim().slice(0, 240);
+
+  let results: AnonLead[] = [];
+  let searchFailed = false;
+  if (q) {
+    try {
+      results = await anonymousDiscover(q);
+    } catch {
+      searchFailed = true;
+    }
+  }
+  const hasSearched = q.length > 0;
+
   return (
     <main className="flex min-h-screen flex-col bg-white text-slate-900">
       {/* Top bar — minimal */}
@@ -32,17 +48,19 @@ export default function HomePage() {
       </header>
 
       {/* Centered search */}
-      <section className="flex flex-1 flex-col items-center justify-center px-5 pb-16">
-        <LogoMark className="h-12 w-12 sm:h-16 sm:w-16" />
-        <h1 className="mt-5 bg-gradient-to-r from-brand via-fuchsia-500 to-rose-400 bg-clip-text text-center text-3xl font-bold tracking-tight text-transparent sm:text-5xl">
+      <section className={"flex flex-1 flex-col items-center px-5 " + (hasSearched ? "pt-8" : "justify-center pb-16")}>
+        {!hasSearched && <LogoMark className="h-12 w-12 sm:h-16 sm:w-16" />}
+        <h1 className={"mt-5 text-center font-bold tracking-tight text-slate-900 " + (hasSearched ? "text-2xl sm:text-3xl" : "text-3xl sm:text-5xl")}>
           Find leads anywhere on the web.
         </h1>
-        <p className="mt-3 max-w-xl text-center text-sm text-slate-500 sm:text-base">
-          Type what you're looking for. Folio searches the public web — classifieds,
-          job boards, callouts, posts — and brings back the matches.
-        </p>
+        {!hasSearched && (
+          <p className="mt-3 max-w-xl text-center text-sm text-slate-500 sm:text-base">
+            Type what you're looking for. Folio searches the public web — classifieds,
+            job boards, callouts, posts — and brings back the matches.
+          </p>
+        )}
 
-        <form action="/api/start-search" method="get" className="mt-8 w-full max-w-2xl">
+        <form action="/" method="get" className="mt-8 w-full max-w-2xl">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-md focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 shrink-0 text-slate-400">
               <circle cx="11" cy="11" r="7" />
@@ -50,6 +68,7 @@ export default function HomePage() {
             </svg>
             <input
               name="q"
+              defaultValue={q}
               autoFocus
               placeholder="What kind of lead are you looking for?"
               className="flex-1 bg-transparent py-1.5 text-base outline-none placeholder:text-slate-400"
@@ -63,25 +82,93 @@ export default function HomePage() {
             </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {EXAMPLES.map((s) => (
-              <Link
-                key={s}
-                href={`/api/start-search?q=${encodeURIComponent(s)}`}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 hover:border-brand/40 hover:text-brand"
-              >
-                {s}
-              </Link>
-            ))}
-          </div>
+          {!hasSearched && (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {EXAMPLES.map((s) => (
+                <Link
+                  key={s}
+                  href={`/?q=${encodeURIComponent(s)}`}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 hover:border-brand/40 hover:text-brand"
+                >
+                  {s}
+                </Link>
+              ))}
+            </div>
+          )}
         </form>
 
-        <div className="mt-10 text-center text-xs text-slate-400">
-          Looking for a service yourself?{" "}
-          <Link href="/order" className="text-slate-600 underline hover:text-slate-900">
-            Post a request
-          </Link>
-        </div>
+        {/* Results teaser — blurred, gated behind sign-in */}
+        {hasSearched && (
+          <div className="mt-10 w-full max-w-3xl pb-16">
+            {searchFailed ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                <p className="text-sm text-slate-600">
+                  We couldn't run that search just now.{" "}
+                  <Link href={`/api/start-search?q=${encodeURIComponent(q)}`} className="font-semibold text-brand underline">
+                    Sign in
+                  </Link>{" "}
+                  to try from your dashboard.
+                </p>
+              </div>
+            ) : results.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                <p className="text-sm text-slate-600">No public matches for that yet. Try rephrasing your search.</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-slate-700">
+                    Found {results.length} matching {results.length === 1 ? "lead" : "leads"}
+                  </p>
+                  <Link
+                    href={`/api/start-search?q=${encodeURIComponent(q)}`}
+                    className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark"
+                  >
+                    Sign in to reveal →
+                  </Link>
+                </div>
+
+                <ol className="relative space-y-4">
+                  {results.map((l, i) => (
+                    <li key={i} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-base font-semibold leading-snug text-slate-900">{l.title}</p>
+                      {l.summary && <p className="mt-1.5 text-sm text-slate-700">{l.summary}</p>}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                        {l.location && <span>📍 {l.location}</span>}
+                        {l.budget_hint && <span>· 💰 {l.budget_hint}</span>}
+                      </div>
+                      <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                        <p className="select-none text-sm text-slate-500 blur-sm">
+                          {l.source_domain ? `${l.source_domain.slice(0, 2)}••••••.com` : "••••••.com"} · contact hidden
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-400">Source &amp; contact locked — sign in to reveal</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className="mt-8 text-center">
+                  <Link
+                    href={`/api/start-search?q=${encodeURIComponent(q)}`}
+                    className="inline-flex rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                  >
+                    Sign in to reveal these leads →
+                  </Link>
+                  <p className="mt-2 text-xs text-slate-400">Free to search. Reveal a lead's source &amp; contact with credits.</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {!hasSearched && (
+          <div className="mt-10 text-center text-xs text-slate-400">
+            Looking for a service yourself?{" "}
+            <Link href="/order" className="text-slate-600 underline hover:text-slate-900">
+              Post a request
+            </Link>
+          </div>
+        )}
       </section>
 
       <footer className="border-t border-slate-100 px-5 py-4 text-center text-xs text-slate-400 sm:px-8">

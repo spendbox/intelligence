@@ -7,7 +7,7 @@ export type Settings = {
   currency: string;
   naira_per_credit: number;
   unlock_rate: number;
-  discover_scan_cost_credits: number;
+  discover_reveal_cost_credits: number;
   discover_scan_cooldown_seconds: number;
 };
 
@@ -18,7 +18,7 @@ const defaults: Settings = {
   currency: "NGN",
   naira_per_credit: 10,
   unlock_rate: 0.00001,
-  discover_scan_cost_credits: 10,
+  discover_reveal_cost_credits: 10,
   discover_scan_cooldown_seconds: 60,
 };
 

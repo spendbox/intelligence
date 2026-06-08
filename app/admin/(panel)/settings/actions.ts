@@ -10,7 +10,7 @@ const Schema = z.object({
   currency: z.string().min(3).max(8),
   naira_per_credit: z.coerce.number().int().min(1).max(1_000_000),
   unlock_rate: z.coerce.number().min(0).max(1).finite(),
-  discover_scan_cost_credits: z.coerce.number().int().min(0).max(10_000),
+  discover_reveal_cost_credits: z.coerce.number().int().min(0).max(10_000),
   discover_scan_cooldown_seconds: z.coerce.number().int().min(0).max(86_400),
 });
 
@@ -23,7 +23,7 @@ export async function saveSettingsAction(formData: FormData) {
     currency: formData.get("currency") ?? "NGN",
     naira_per_credit: formData.get("naira_per_credit") ?? 10,
     unlock_rate: formData.get("unlock_rate") ?? 0.00001,
-    discover_scan_cost_credits: formData.get("discover_scan_cost_credits") ?? 10,
+    discover_reveal_cost_credits: formData.get("discover_reveal_cost_credits") ?? 10,
     discover_scan_cooldown_seconds: formData.get("discover_scan_cooldown_seconds") ?? 60,
   });
   if (!parsed.success) redirect("/admin/settings?error=1");
@@ -33,7 +33,7 @@ export async function saveSettingsAction(formData: FormData) {
     setSetting("currency", parsed.data.currency),
     setSetting("naira_per_credit", parsed.data.naira_per_credit),
     setSetting("unlock_rate", parsed.data.unlock_rate),
-    setSetting("discover_scan_cost_credits", parsed.data.discover_scan_cost_credits),
+    setSetting("discover_reveal_cost_credits", parsed.data.discover_reveal_cost_credits),
     setSetting("discover_scan_cooldown_seconds", parsed.data.discover_scan_cooldown_seconds),
   ]);
 
