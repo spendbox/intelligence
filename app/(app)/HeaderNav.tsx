@@ -7,17 +7,15 @@ import { logoutAction } from "../login/actions";
 type Item = { href: string; label: string };
 
 const ITEMS: Item[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/business/leads", label: "Leads" },
   { href: "/business/discover", label: "Discover" },
   { href: "/business/wallet", label: "Wallet" },
   { href: "/business/profile", label: "My Page" },
+  { href: "/business/leads", label: "Inbox" },
   { href: "/business/compliance", label: "Compliance" },
   { href: "/account/pin", label: "PIN" },
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/dashboard") return pathname === "/dashboard";
   return pathname === href || pathname.startsWith(href + "/");
 }
 

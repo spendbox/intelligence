@@ -7,28 +7,40 @@ export type SearchHit = {
   published_date?: string | null;
 };
 
+const TAVILY_TIMEOUT_MS = 20_000;
+
 export async function tavilySearch(query: string): Promise<SearchHit[]> {
-  const res = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: env.tavilyKey(),
-      query,
-      search_depth: "advanced",
-      max_results: 8,
-      include_answer: false,
-    }),
-    cache: "no-store",
-  });
-  const json: any = await res.json();
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TAVILY_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: env.tavilyKey(),
+        query,
+        search_depth: "advanced",
+        max_results: 8,
+        include_answer: false,
+      }),
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(t);
+  }
+  const json: any = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Tavily error: ${json?.error ?? res.statusText}`);
   const results: any[] = Array.isArray(json.results) ? json.results : [];
-  return results.map((r) => ({
-    title: String(r.title ?? "").slice(0, 240),
-    url: String(r.url ?? ""),
-    content: String(r.content ?? r.snippet ?? "").slice(0, 2000),
-    published_date: r.published_date ?? null,
-  })).filter((r) => r.url);
+  return results
+    .map((r) => ({
+      title: String(r.title ?? "").slice(0, 240),
+      url: String(r.url ?? ""),
+      content: String(r.content ?? r.snippet ?? "").slice(0, 2000),
+      published_date: r.published_date ?? null,
+    }))
+    .filter((r) => r.url);
 }
 
 export async function searchMany(queries: string[]): Promise<SearchHit[]> {

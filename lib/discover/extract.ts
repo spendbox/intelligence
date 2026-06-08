@@ -64,24 +64,32 @@ export async function extractLeads(
 ): Promise<ExtractedLead[]> {
   if (hits.length === 0) return [];
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env.openaiKey()}`,
-    },
-    body: JSON.stringify({
-      model: env.openaiModel(),
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: buildUserMsg(profile, hits) },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-    }),
-    cache: "no-store",
-  });
-  const json: any = await res.json();
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 45_000);
+  let res: Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.openaiKey()}`,
+      },
+      body: JSON.stringify({
+        model: env.openaiModel(),
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: buildUserMsg(profile, hits) },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(t);
+  }
+  const json: any = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`OpenAI error: ${json?.error?.message ?? res.statusText}`);
   const content: string = json.choices?.[0]?.message?.content ?? "{}";
 

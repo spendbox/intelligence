@@ -1,12 +1,16 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/settings";
 import { formatCredits } from "@/lib/leads";
-import ConfirmForm from "@/components/ConfirmForm";
-import { dismissDiscoveredLeadAction, runDiscoveryScanAction } from "./actions";
+import { dismissDiscoveredLeadAction, sweepStaleScans } from "./actions";
+import DiscoverSearchBox from "./SearchBox";
 
 export const dynamic = "force-dynamic";
+// Server actions on this route can run an inline scan that talks to Tavily
+// and OpenAI; give them up to 90s.
+export const maxDuration = 90;
 
 function formatRelative(iso?: string | null): string {
   if (!iso) return "—";
@@ -25,23 +29,18 @@ function formatRelative(iso?: string | null): string {
   return `${mo}mo ago`;
 }
 
-function StatusPill({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    running: "bg-amber-50 text-amber-700",
-    completed: "bg-emerald-50 text-emerald-700",
-    failed: "bg-rose-50 text-rose-700",
-  };
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${map[status] ?? "bg-slate-100 text-slate-700"}`}>
-      {status}
-    </span>
-  );
-}
+const SUGGESTIONS = [
+  "Wedding photographer in Lagos under ₦500k",
+  "3-bedroom apartment rental in Lekki Phase 1",
+  "Catering for 80 corporate lunch in Abuja",
+  "Custom CRM build for fintech sales team",
+  "Bulk poultry feed supply in Ogun",
+];
 
 export default async function DiscoverPage({
   searchParams,
 }: {
-  searchParams: { scan?: string; error?: string };
+  searchParams: { scan?: string; error?: string; q?: string };
 }) {
   const session = await getUserSession();
   if (!session.userId) redirect("/login");
@@ -55,6 +54,17 @@ export default async function DiscoverPage({
   if (!business) redirect("/business/setup");
   if (!business.setup_complete) redirect("/business/setup");
 
+  // Auto-recover any stuck scans before we render guard state.
+  await sweepStaleScans(business.id, session.userId);
+
+  // Honour a search query the user entered on the landing page before signing in.
+  const cookieStore = cookies();
+  const pendingCookie = cookieStore.get("pending_search")?.value;
+  if (!searchParams.q && pendingCookie) {
+    cookieStore.delete("pending_search");
+    redirect(`/business/discover?q=${encodeURIComponent(pendingCookie)}`);
+  }
+
   const [settings, walletRes, leadsRes, scansRes] = await Promise.all([
     getSettings(),
     sb.from("wallets").select("credits").eq("user_id", session.userId).maybeSingle(),
@@ -64,203 +74,123 @@ export default async function DiscoverPage({
       .eq("business_id", business.id)
       .is("dismissed_at", null)
       .order("created_at", { ascending: false })
-      .limit(60),
+      .limit(40),
     sb
       .from("discovered_scans")
       .select("id, status, results_count, error, started_at, finished_at")
       .eq("business_id", business.id)
       .order("started_at", { ascending: false })
-      .limit(10),
+      .limit(5),
   ]);
 
   const credits = Number(walletRes.data?.credits ?? 0);
   const cost = Math.max(0, Number(settings.discover_scan_cost_credits) || 0);
-  const cooldownSec = Math.max(0, Number(settings.discover_scan_cooldown_seconds) || 0);
   const leads = leadsRes.data ?? [];
   const scans = scansRes.data ?? [];
-
-  const activeScan = scans.find((s: any) => s.status === "running");
-  const lastScan = scans[0];
-  const lastStartedMs = lastScan ? new Date(lastScan.started_at).getTime() : 0;
-  const cooldownLeftSec = lastStartedMs
-    ? Math.max(0, Math.ceil((lastStartedMs + cooldownSec * 1000 - Date.now()) / 1000))
-    : 0;
-  const inCooldown = !!activeScan || cooldownLeftSec > 0;
   const lowCredits = credits < cost;
-  const buttonDisabled = inCooldown || lowCredits;
+  const q = (searchParams.q ?? "").slice(0, 240);
+
+  const errMap: Record<string, string> = {
+    credits: "Not enough credits. Top up your wallet to scan again.",
+    cooldown: "Hang on — wait a moment before another scan.",
+    server: "Couldn't start that scan. Please try again.",
+    failed: "That scan failed (we refunded your credits). Try a different query.",
+  };
+  const errMsg = searchParams.error ? errMap[searchParams.error] : null;
 
   return (
-    <>
-      {activeScan && (
-        // Auto-refresh while a scan is running so completed results show up
-        // without the user reloading.
-        // eslint-disable-next-line @next/next/no-head-element
-        <meta httpEquiv="refresh" content="8" />
-      )}
+    <div className="min-h-[80vh]">
+      {/* Google-style centered search */}
+      <div className="mx-auto flex max-w-2xl flex-col items-center px-4 pt-10 sm:pt-16">
+        <h1 className="bg-gradient-to-r from-brand via-fuchsia-500 to-rose-400 bg-clip-text text-center text-4xl font-bold tracking-tight text-transparent sm:text-5xl">
+          Discover
+        </h1>
+        <p className="mt-2 text-center text-sm text-slate-500">
+          Describe a lead in plain English. We scan the public web for matches.
+        </p>
 
-      <div className="space-y-8">
-        <header className="rounded-3xl border border-slate-200 bg-gradient-to-br from-brand/[0.06] to-fuchsia-50 p-5 shadow-sm sm:p-7">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-xl">
-              <h1 className="text-2xl font-bold tracking-tight">Discover leads on the web</h1>
-              <p className="mt-1 text-sm text-slate-600">
-                Scan publicly posted requests, jobs and callouts that match your industry, area and budget.
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <ConfirmForm
-                action={runDiscoveryScanAction}
-                trigger={{
-                  label: buttonDisabled ? "Run a scan" : `Run a scan · ${formatCredits(cost)} cr`,
-                  className:
-                    "rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition " +
-                    (buttonDisabled
-                      ? "cursor-not-allowed bg-slate-200 text-slate-500"
-                      : "bg-brand text-white hover:bg-brand-dark"),
-                }}
-                danger={false}
-                title="Run a discovery scan?"
-                message={
-                  <>
-                    This will search the web for opportunities matching your profile and
-                    spend <strong>{formatCredits(cost)} credits</strong>. Takes about a minute.
-                  </>
-                }
-                confirmLabel={buttonDisabled ? "Unavailable" : `Spend ${formatCredits(cost)} credits`}
-              />
-              <p className="text-xs text-slate-500">
-                Wallet: <strong>{formatCredits(credits)}</strong> credits
-              </p>
-            </div>
+        <DiscoverSearchBox
+          defaultQuery={q}
+          cost={cost}
+          credits={credits}
+          disabled={lowCredits}
+          suggestions={SUGGESTIONS}
+        />
+
+        <p className="mt-3 text-xs text-slate-500">
+          Each scan costs <strong>{formatCredits(cost)} credits</strong>. You have{" "}
+          <strong>{formatCredits(credits)}</strong>.
+        </p>
+
+        {errMsg && (
+          <p className="mt-4 w-full rounded-lg bg-rose-50 px-3 py-2 text-center text-sm text-rose-700">
+            {errMsg}
+          </p>
+        )}
+      </div>
+
+      {/* Results */}
+      <div className="mx-auto mt-10 max-w-3xl px-4 pb-16">
+        {leads.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-10 text-center">
+            <p className="text-sm text-slate-600">
+              No discovered leads yet. Type what you're looking for and tap{" "}
+              <strong>Scan the web</strong>.
+            </p>
           </div>
-
-          {searchParams.error === "credits" && (
-            <p className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              Not enough credits. <a href="/business/wallet" className="font-medium underline">Top up</a> to scan.
-            </p>
-          )}
-          {searchParams.error === "cooldown" && (
-            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              You're scanning too often. Try again in a moment.
-            </p>
-          )}
-          {searchParams.error === "server" && (
-            <p className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              Couldn't start that scan. Please try again.
-            </p>
-          )}
-          {activeScan && (
-            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              Scanning the web… results will appear here in under a minute.
-            </p>
-          )}
-          {!activeScan && inCooldown && (
-            <p className="mt-4 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
-              Cooldown: try again in {cooldownLeftSec}s.
-            </p>
-          )}
-        </header>
-
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight">Results</h2>
-          <p className="mt-0.5 text-xs text-slate-500">Most recent 60, lowest-quality matches filtered out.</p>
-
-          {leads.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
-              <p className="text-sm text-slate-600">
-                No discovered leads yet. Tap <strong>Run a scan</strong> to see public opportunities that match your profile.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {leads.map((l: any) => (
-                <article key={l.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-semibold uppercase tracking-widest text-brand">
-                        {l.source_domain || "source"}
-                      </p>
-                      <h3 className="mt-1 text-sm font-semibold leading-snug text-slate-900">{l.title}</h3>
-                    </div>
-                    {typeof l.score === "number" && (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                        {Math.round(Number(l.score) * 100)}%
-                      </span>
-                    )}
-                  </div>
-
-                  {l.summary && <p className="mt-2 text-sm text-slate-600">{l.summary}</p>}
-
-                  <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-                    {l.location && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">📍 {l.location}</span>
-                    )}
-                    {l.budget_hint && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">💰 {l.budget_hint}</span>
-                    )}
-                    {l.contact_hint && (
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700">✉ {l.contact_hint}</span>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-2 text-xs">
+        ) : (
+          <ol className="space-y-4">
+            {leads.map((l: any) => (
+              <li key={l.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand/30 hover:shadow">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-slate-500">{l.source_domain || "source"}</p>
                     <a
                       href={l.source_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-lg bg-slate-900 px-3 py-1.5 font-semibold text-white hover:bg-slate-800"
+                      className="mt-0.5 block text-base font-semibold leading-snug text-brand hover:underline"
                     >
-                      Open source ↗
+                      {l.title}
                     </a>
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <span>{formatRelative(l.created_at)}</span>
-                      <form action={dismissDiscoveredLeadAction}>
-                        <input type="hidden" name="id" value={l.id} />
-                        <button className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
-                          Dismiss
-                        </button>
-                      </form>
-                    </div>
                   </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                  {typeof l.score === "number" && (
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      {Math.round(Number(l.score) * 100)}%
+                    </span>
+                  )}
+                </div>
+                {l.summary && <p className="mt-2 text-sm text-slate-700">{l.summary}</p>}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                  {l.location && <span>📍 {l.location}</span>}
+                  {l.budget_hint && <span>· 💰 {l.budget_hint}</span>}
+                  {l.contact_hint && <span>· ✉ {l.contact_hint}</span>}
+                  <span className="ml-auto">{formatRelative(l.created_at)}</span>
+                  <form action={dismissDiscoveredLeadAction} className="ml-2">
+                    <input type="hidden" name="id" value={l.id} />
+                    <button className="text-slate-400 hover:text-slate-700">Dismiss</button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
 
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight">Recent scans</h2>
-          <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Started</th>
-                  <th className="px-4 py-2 text-right">Results</th>
-                  <th className="px-4 py-2">Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {scans.map((s: any) => (
-                  <tr key={s.id} className="border-t border-slate-100">
-                    <td className="px-4 py-2"><StatusPill status={s.status} /></td>
-                    <td className="px-4 py-2 text-slate-600">{formatRelative(s.started_at)}</td>
-                    <td className="px-4 py-2 text-right">{s.results_count ?? 0}</td>
-                    <td className="px-4 py-2 text-rose-600">{s.error ?? ""}</td>
-                  </tr>
-                ))}
-                {scans.length === 0 && (
-                  <tr>
-                    <td className="px-4 py-6 text-center text-slate-500" colSpan={4}>
-                      No scans yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {scans.length > 0 && (
+          <details className="mt-10 rounded-xl border border-slate-200 bg-white/60 p-4 text-sm">
+            <summary className="cursor-pointer font-medium text-slate-700">Recent scans</summary>
+            <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+              {scans.map((s: any) => (
+                <li key={s.id} className="flex items-center justify-between gap-3">
+                  <span className="capitalize">{s.status}</span>
+                  <span>{s.results_count ?? 0} results</span>
+                  <span className="text-slate-400">{formatRelative(s.started_at)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
-    </>
+    </div>
   );
 }
