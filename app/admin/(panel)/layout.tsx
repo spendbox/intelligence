@@ -7,6 +7,7 @@ import { adminLogoutAction } from "../login/actions";
 const items = [
   { href: "/admin/requests", label: "Requests" },
   { href: "/admin/businesses", label: "Businesses" },
+  { href: "/admin/stats", label: "Stats" },
   { href: "/admin/insights", label: "Insights" },
   { href: "/admin/categories", label: "Industries" },
   { href: "/admin/users", label: "Users" },
