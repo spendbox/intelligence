@@ -123,7 +123,7 @@ export default async function AdminInsightsPage() {
 
       <section>
         <h2 className="text-base font-semibold">Recent drafts</h2>
-        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
