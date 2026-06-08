@@ -24,5 +24,7 @@ export const env = {
   openaiKey: () => required("OPENAI_API_KEY"),
   openaiKeySafe: () => process.env.OPENAI_API_KEY ?? "",
   openaiModel: () => optional("OPENAI_MODEL", "gpt-4o-mini"),
+  tavilyKey: () => required("TAVILY_API_KEY"),
+  tavilyKeySafe: () => process.env.TAVILY_API_KEY ?? "",
   adminNotificationEmail: () => optional("ADMIN_NOTIFICATION_EMAIL", "spendbox@gmail.com"),
 };
