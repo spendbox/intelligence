@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { formatBudgetRange } from "@/lib/leads";
 import { deleteRequestAction } from "./actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -97,12 +98,17 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
                     <Link href={`/admin/requests/${r.id}`} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
                       Open
                     </Link>
-                    <form action={deleteRequestAction}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <button className="rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50">
-                        Delete
-                      </button>
-                    </form>
+                    <ConfirmForm
+                      action={deleteRequestAction}
+                      hidden={[{ name: "id", value: r.id }]}
+                      trigger={{
+                        label: "Delete",
+                        className: "rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50",
+                      }}
+                      title="Delete this request?"
+                      message={`Permanently delete "${r.name}'s" request and any matches, unlocks and images. Can't be undone.`}
+                      confirmLabel="Delete request"
+                    />
                   </div>
                 </td>
               </tr>

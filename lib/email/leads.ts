@@ -108,7 +108,7 @@ export async function sendBusinessLeadEmail(to: string, payload: {
     html: shell(
       "New lead matched for you",
       `${priorityBanner}
-       <p>A new request was just matched to your business${payload.priority ? " — and the customer paid for priority placement" : ""}.</p>
+       <p>A new request was just matched to your business${payload.priority ? " — and the customer paid for priority, signalling they're a serious buyer with budget ready" : ""}.</p>
        <ul style="line-height:1.7">
          <li><strong>Industry:</strong> ${payload.industryName}</li>
          <li><strong>Location:</strong> ${payload.location}</li>

@@ -342,7 +342,7 @@ export default function OrderWizard({ industries }: { industries: Industry[] }) 
                     <div>
                       <p className="text-sm font-semibold text-white">🔥 Boost as priority</p>
                       <p className="mt-0.5 text-xs text-white/70">
-                        Recommended for budgets over ₦1m. Priority requests are tagged in business inboxes and appear first.
+                        Recommended for budgets over ₦1m. A small priority fee tells businesses you're committed — they prioritise serious buyers and respond faster with sharper quotes.
                       </p>
                     </div>
                   </label>

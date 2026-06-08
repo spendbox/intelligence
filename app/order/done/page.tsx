@@ -5,7 +5,7 @@ export default function DonePage({ searchParams }: { searchParams: { priority?: 
   const priority = searchParams.priority;
   const priorityCopy =
     priority === "success"
-      ? "Priority boost confirmed — your request will appear first in business inboxes."
+      ? "Priority confirmed — businesses know you're a serious buyer and will reach out first with sharper quotes."
       : priority === "failed"
       ? "Priority payment didn't complete, but your request is still in for review."
       : null;

@@ -25,6 +25,7 @@ export default function LogoUploader({ currentUrl, fallbackInitial }: { currentU
   }
 
   function onRemove() {
+    if (typeof window !== "undefined" && !window.confirm("Remove your logo? You can upload a new one any time.")) return;
     start(async () => {
       try {
         await removeLogoAction();

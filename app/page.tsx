@@ -302,7 +302,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customers</p>
               <p className="mt-2 text-3xl font-bold tracking-tight">Free to post</p>
-              <p className="mt-2 text-sm text-slate-600">Posting a request is free. For requests over ₦1m you can boost as priority so businesses see it first.</p>
+              <p className="mt-2 text-sm text-slate-600">Posting a request is free. For requests over ₦1m you can pay a small priority fee — it signals to businesses that you're a serious buyer, so you get faster, sharper quotes.</p>
               <Link href="/order" className="mt-5 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 Post a request →
               </Link>
