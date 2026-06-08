@@ -13,7 +13,7 @@ export default async function AdminDeliveriesPage() {
       <h1 className="text-2xl font-bold tracking-tight">Deliveries</h1>
       <p className="mt-1 text-sm text-slate-600">Most recent 200 deliveries</p>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>

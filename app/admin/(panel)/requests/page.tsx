@@ -1,8 +1,61 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { formatBudgetRange } from "@/lib/leads";
+import { formatBudgetRange, formatNaira } from "@/lib/leads";
 import { deleteRequestAction } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
+
+async function RevenueStrip() {
+  const sb = supabaseAdmin();
+  // Paystack top-ups: wallet_transactions where reason=topup AND metadata.source = 'paystack'.
+  // Admin manual credits are excluded — they don't count as revenue.
+  const { data: txs } = await sb
+    .from("wallet_transactions")
+    .select("naira_amount, created_at, metadata")
+    .eq("reason", "topup")
+    .not("naira_amount", "is", null);
+  const paystackTxs = (txs ?? []).filter(
+    (t: any) => t.metadata && t.metadata.source === "paystack"
+  );
+  const totalTopup = paystackTxs.reduce((sum: number, t: any) => sum + (Number(t.naira_amount) || 0), 0);
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const last30 = paystackTxs
+    .filter((t: any) => new Date(t.created_at).getTime() >= thirtyDaysAgo)
+    .reduce((sum: number, t: any) => sum + (Number(t.naira_amount) || 0), 0);
+
+  // Priority payments: lead_requests with priority_paid=true.
+  const { data: priorityRows } = await sb
+    .from("lead_requests")
+    .select("priority_amount_naira, priority_paid_at")
+    .eq("priority_paid", true);
+  const priorityTotal = (priorityRows ?? []).reduce(
+    (sum: number, r: any) => sum + (Number(r.priority_amount_naira) || 0),
+    0
+  );
+  const priority30 = (priorityRows ?? [])
+    .filter((r: any) => r.priority_paid_at && new Date(r.priority_paid_at).getTime() >= thirtyDaysAgo)
+    .reduce((sum: number, r: any) => sum + (Number(r.priority_amount_naira) || 0), 0);
+
+  const grand = totalTopup + priorityTotal;
+  const grand30 = last30 + priority30;
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      <RevCard label="Revenue (all time)" value={formatNaira(grand)} hint="Paystack only" />
+      <RevCard label="Last 30 days" value={formatNaira(grand30)} hint="Top-ups + priority" />
+      <RevCard label="Priority fees" value={formatNaira(priorityTotal)} hint={`${(priorityRows ?? []).length} paid`} />
+    </div>
+  );
+}
+
+function RevCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight">{value}</p>
+      <p className="text-xs text-slate-500">{hint}</p>
+    </div>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +89,22 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Lead requests</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {pending ?? 0} awaiting review · {approved ?? 0} live
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Lead requests</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            {pending ?? 0} awaiting review · {approved ?? 0} live
+          </p>
+        </div>
+        <Link
+          href="/admin/requests/new"
+          className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark"
+        >
+          + New request
+        </Link>
       </div>
+
+      <RevenueStrip />
 
       {searchParams.ok === "deleted" && (
         <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">Request deleted.</p>
@@ -62,7 +125,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>

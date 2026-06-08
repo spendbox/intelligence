@@ -5,6 +5,7 @@ import { LogoMark } from "@/lib/logo";
 import { getSettings } from "@/lib/settings";
 import { formatNaira } from "@/lib/leads";
 import { HeroIllustration, StackIllustration, WalletIllustration } from "@/lib/illustrations";
+import CalculatorSection from "./CalculatorSection";
 
 export const dynamic = "force-dynamic";
 
@@ -320,6 +321,11 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <CalculatorSection
+        nairaPerCredit={creditNaira}
+        unlockRate={settings.unlock_rate || 0.00001}
+      />
 
       {/* FAQ */}
       <section id="faq" className="bg-white text-slate-900">

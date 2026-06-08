@@ -33,7 +33,7 @@ export async function adminLoginAction(formData: FormData) {
   session.email = expectedEmail;
   await session.save();
 
-  redirect("/admin/insights");
+  redirect("/admin/requests");
 }
 
 export async function adminLogoutAction() {
