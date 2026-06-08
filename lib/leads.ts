@@ -27,6 +27,37 @@ export function formatCredits(n: number): string {
   return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
+// ── Top-up bonus tiers ───────────────────────────────────────────────────────
+// Bonus credits added on Paystack top-ups (NOT on admin manual credits).
+export const BONUS_TIERS: { min: number; percent: number }[] = [
+  { min: 100_000, percent: 50 },
+  { min: 30_000, percent: 25 },
+  { min: 10_000, percent: 10 },
+];
+
+export function bonusPercentFor(naira: number): number {
+  for (const t of BONUS_TIERS) if (naira >= t.min) return t.percent;
+  return 0;
+}
+
+export function bonusCreditsFor(baseCredits: number, naira: number): number {
+  const pct = bonusPercentFor(naira);
+  return Math.round(baseCredits * pct) / 100;
+}
+
+export function totalCreditsForTopup(naira: number, nairaPerCredit = DEFAULT_NAIRA_PER_CREDIT): {
+  base: number;
+  bonus: number;
+  total: number;
+  bonusPercent: number;
+} {
+  const base = nairaToCredits(naira, nairaPerCredit);
+  const bonusPercent = bonusPercentFor(naira);
+  const bonus = Math.round(base * bonusPercent) / 100;
+  const total = Math.round((base + bonus) * 100) / 100;
+  return { base, bonus, total, bonusPercent };
+}
+
 // Async helpers — read live config from app_settings.
 export async function computeCreditsForNaira(naira: number): Promise<number> {
   const s = await getSettings();
