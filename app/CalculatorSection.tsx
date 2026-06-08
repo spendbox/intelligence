@@ -33,10 +33,7 @@ export default function CalculatorSection({
       <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Estimate</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Run the numbers before you sign up.</h2>
-          <p className="mt-3 text-base text-slate-600 sm:text-lg">
-            See what you'd get from a top-up and how many credits it costs to unlock the type of lead you'd be chasing.
-          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Run the numbers.</h2>
         </div>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
@@ -106,7 +103,7 @@ export default function CalculatorSection({
               />
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Unlock cost = budget × rate. Current rate: {unlockRate.toLocaleString(undefined, { maximumFractionDigits: 6 })}.
+              Bigger budgets cost a little more to unlock.
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200">

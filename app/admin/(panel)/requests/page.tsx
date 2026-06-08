@@ -59,6 +59,40 @@ function RevCard({ label, value, hint }: { label: string; value: string; hint: s
 
 export const dynamic = "force-dynamic";
 
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "—";
+  const diff = Math.max(0, Date.now() - then);
+  const s = Math.round(diff / 1000);
+  if (s < 45) return "just now";
+  const m = Math.round(s / 60);
+  if (m < 2) return "1 minute ago";
+  if (m < 60) return `${m} minutes ago`;
+  const h = Math.round(m / 60);
+  if (h < 2) return "1 hour ago";
+  if (h < 24) return `${h} hours ago`;
+  const d = Math.round(h / 24);
+  if (d < 2) return "yesterday";
+  if (d < 30) return `${d} days ago`;
+  const mo = Math.round(d / 30);
+  if (mo < 12) return mo === 1 ? "1 month ago" : `${mo} months ago`;
+  const y = Math.round(mo / 12);
+  return y === 1 ? "1 year ago" : `${y} years ago`;
+}
+
+function formatExact(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleString("en-NG", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
     submitted: "bg-amber-50 text-amber-700",
@@ -135,6 +169,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
               <th className="px-4 py-2.5">Location</th>
               <th className="px-4 py-2.5">Status</th>
               <th className="px-4 py-2.5">Unlocks</th>
+              <th className="px-4 py-2.5">Received</th>
               <th className="px-4 py-2.5"></th>
             </tr>
           </thead>
@@ -156,6 +191,9 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
                 <td className="px-4 py-2.5 text-slate-600">{r.location}</td>
                 <td className="px-4 py-2.5"><StatusPill status={r.status} /></td>
                 <td className="px-4 py-2.5 text-slate-600">{r.unlocks_count} / 10</td>
+                <td className="px-4 py-2.5 text-slate-600">
+                  <span title={formatExact(r.created_at)}>{formatRelative(r.created_at)}</span>
+                </td>
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex justify-end gap-2">
                     <Link href={`/admin/requests/${r.id}`} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
@@ -177,7 +215,7 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
               </tr>
             ))}
             {(!requests || requests.length === 0) && (
-              <tr><td className="px-4 py-10 text-center text-slate-500" colSpan={7}>No requests in this view.</td></tr>
+              <tr><td className="px-4 py-10 text-center text-slate-500" colSpan={8}>No requests in this view.</td></tr>
             )}
           </tbody>
         </table>

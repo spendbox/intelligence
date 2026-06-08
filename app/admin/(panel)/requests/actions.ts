@@ -8,6 +8,7 @@ import { suggestMatches, sendPendingLeadEmails } from "@/app/order/actions";
 import { sendOrderApprovedEmail } from "@/lib/email/leads";
 import { unlockCreditsFor, UNLOCK_CAP_DEFAULT } from "@/lib/leads";
 import { getSettings } from "@/lib/settings";
+import { BUCKET, pathFromPublicUrl } from "@/lib/storage";
 
 async function requireAdmin() {
   const session = await getAdminSession();
@@ -174,6 +175,34 @@ export async function deleteRequestAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) redirect("/admin/requests");
   const sb = supabaseAdmin();
-  await sb.from("lead_requests").delete().eq("id", id);
+
+  // Collect storage paths from any attached images before the DB rows cascade away.
+  const { data: imgRows } = await sb
+    .from("lead_request_images")
+    .select("url")
+    .eq("request_id", id);
+  const paths = new Set<string>();
+  for (const row of imgRows ?? []) {
+    const p = pathFromPublicUrl(String((row as any).url ?? ""));
+    if (p) paths.add(p);
+  }
+  // Catch anything else left in the request's folder (uploads that never made it to the DB row).
+  const { data: listed } = await sb.storage.from(BUCKET).list(`requests/${id}`, { limit: 1000 });
+  for (const entry of listed ?? []) paths.add(`requests/${id}/${entry.name}`);
+
+  const { error: delErr } = await sb.from("lead_requests").delete().eq("id", id);
+  if (delErr) {
+    console.error("[admin/requests] delete failed:", delErr.message);
+    redirect(`/admin/requests/${id}?error=delete`);
+  }
+
+  if (paths.size > 0) {
+    try {
+      await sb.storage.from(BUCKET).remove(Array.from(paths));
+    } catch (e) {
+      console.error("[admin/requests] storage cleanup failed:", e);
+    }
+  }
+
   redirect("/admin/requests?ok=deleted");
 }
