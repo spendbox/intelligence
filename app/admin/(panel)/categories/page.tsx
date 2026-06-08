@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createCategoryAction, deleteCategoryAction, toggleCategoryAction } from "./actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -116,12 +117,17 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                           {c.active ? "Disable" : "Enable"}
                         </button>
                       </form>
-                      <form action={deleteCategoryAction}>
-                        <input type="hidden" name="id" value={c.id} />
-                        <button className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50">
-                          Delete
-                        </button>
-                      </form>
+                      <ConfirmForm
+                        action={deleteCategoryAction}
+                        hidden={[{ name: "id", value: c.id }]}
+                        trigger={{
+                          label: "Delete",
+                          className: "rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50",
+                        }}
+                        title={`Delete "${c.name}"?`}
+                        message="If any business or insight references this category it will be disabled instead. Otherwise it's permanently removed."
+                        confirmLabel="Delete"
+                      />
                     </div>
                   </td>
                 </tr>

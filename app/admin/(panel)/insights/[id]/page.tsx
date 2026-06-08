@@ -7,6 +7,7 @@ import {
   sendDraftNowAction,
   updateDraftAction,
 } from "../actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export default async function AdminInsightPage({
   params,
@@ -45,12 +46,17 @@ export default async function AdminInsightPage({
             {draft.status}
           </span>
         </div>
-        <form action={deleteDraftAction}>
-          <input type="hidden" name="id" value={draft.id} />
-          <button className="rounded-md border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50">
-            Delete draft
-          </button>
-        </form>
+        <ConfirmForm
+          action={deleteDraftAction}
+          hidden={[{ name: "id", value: draft.id }]}
+          trigger={{
+            label: "Delete draft",
+            className: "rounded-md border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50",
+          }}
+          title="Delete this draft?"
+          message="The draft and any deliveries already recorded will be removed. Can't be undone."
+          confirmLabel="Delete draft"
+        />
       </div>
 
       {searchParams.saved && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>}

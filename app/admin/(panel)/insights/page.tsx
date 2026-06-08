@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createDraftAction, deleteDraftAction, generateDraftAction } from "./actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -147,12 +148,17 @@ export default async function AdminInsightsPage() {
                       <Link href={`/admin/insights/${d.id}`} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
                         Open
                       </Link>
-                      <form action={deleteDraftAction}>
-                        <input type="hidden" name="id" value={d.id} />
-                        <button className="rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50">
-                          Delete
-                        </button>
-                      </form>
+                      <ConfirmForm
+                        action={deleteDraftAction}
+                        hidden={[{ name: "id", value: d.id }]}
+                        trigger={{
+                          label: "Delete",
+                          className: "rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50",
+                        }}
+                        title="Delete this draft?"
+                        message="The draft and any delivery records linked to it will be removed. Can't be undone."
+                        confirmLabel="Delete draft"
+                      />
                     </div>
                   </td>
                 </tr>

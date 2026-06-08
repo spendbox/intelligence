@@ -31,6 +31,7 @@ export default function GalleryUploader({ items, capRemaining }: { items: Item[]
   }
 
   function onDelete(id: string) {
+    if (typeof window !== "undefined" && !window.confirm("Delete this image from your gallery? This can't be undone.")) return;
     setDeletingId(id);
     const fd = new FormData();
     fd.append("id", id);

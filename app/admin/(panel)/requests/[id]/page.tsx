@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { formatBudgetRange, formatCredits } from "@/lib/leads";
+import { formatBudgetRange, formatCredits, locationsMatch } from "@/lib/leads";
+import { IndustryIcon } from "@/lib/industryIcons";
 import {
   addMatchAction,
   approveRequestAction,
@@ -11,6 +12,7 @@ import {
   sendMatchedEmailsAction,
 } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -42,12 +44,17 @@ export default async function AdminRequestDetail({
   const searchQ = (searchParams.q ?? "").trim().toLowerCase();
   let bizQuery = sb
     .from("businesses")
-    .select("id, business_name, display_name, slug, users(email)")
+    .select(`
+      id, business_name, display_name, slug, users(email),
+      business_categories(category_id, categories(id, slug, name)),
+      business_locations(location)
+    `)
     .eq("setup_complete", true)
     .order("created_at", { ascending: false })
     .limit(20);
   if (searchQ) bizQuery = bizQuery.ilike("business_name", `%${searchQ}%`);
   const { data: addable } = await bizQuery;
+  const requestCategoryId = (r as any).categories?.id ?? null;
 
   const { data: unlocks } = await sb
     .from("lead_unlocks")
@@ -81,12 +88,17 @@ export default async function AdminRequestDetail({
             Preview as business ↗
           </Link>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">{r.status}</span>
-          <form action={deleteRequestAction}>
-            <input type="hidden" name="id" value={r.id} />
-            <button className="rounded-md border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50">
-              Delete request
-            </button>
-          </form>
+          <ConfirmForm
+            action={deleteRequestAction}
+            hidden={[{ name: "id", value: r.id }]}
+            trigger={{
+              label: "Delete request",
+              className: "rounded-md border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50",
+            }}
+            title="Delete this request?"
+            message="This permanently deletes the request and all its matches, unlocks and images. Can't be undone."
+            confirmLabel="Delete request"
+          />
         </div>
       </div>
 
@@ -161,6 +173,10 @@ export default async function AdminRequestDetail({
             )}
           </div>
 
+          <p className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <strong>Auto-match rule:</strong> business must serve <em>the same industry</em> as the request, hold at least 1 credit, and (if they've configured them) have a location overlap and a budget bracket that overlaps the request's range. Businesses with no locations or no budget ranges set are not filtered out.
+          </p>
+
           <ul className="mt-3 divide-y divide-slate-100">
             {(notifs ?? []).map((n: any) => (
               <li key={n.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
@@ -178,13 +194,20 @@ export default async function AdminRequestDetail({
                     </Link>
                   )}
                   {!n.email_sent && (
-                    <form action={removeMatchAction}>
-                      <input type="hidden" name="request_id" value={r.id} />
-                      <input type="hidden" name="business_id" value={n.business_id} />
-                      <button className="rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50">
-                        Remove
-                      </button>
-                    </form>
+                    <ConfirmForm
+                      action={removeMatchAction}
+                      hidden={[
+                        { name: "request_id", value: r.id },
+                        { name: "business_id", value: n.business_id },
+                      ]}
+                      trigger={{
+                        label: "Remove",
+                        className: "rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50",
+                      }}
+                      title="Remove this match?"
+                      message="They won't receive an email for this request. You can add them back manually below."
+                      confirmLabel="Remove match"
+                    />
                   )}
                 </div>
               </li>
@@ -211,21 +234,63 @@ export default async function AdminRequestDetail({
             <ul className="mt-3 divide-y divide-slate-100">
               {(addable ?? [])
                 .filter((b: any) => !matchedIds.has(b.id))
-                .map((b: any) => (
-                  <li key={b.id} className="flex items-center justify-between py-2 text-sm">
-                    <div>
-                      <p className="font-medium">{b.business_name || b.display_name}</p>
-                      <p className="text-xs text-slate-500">{b.users?.email}</p>
-                    </div>
-                    <form action={addMatchAction}>
-                      <input type="hidden" name="request_id" value={r.id} />
-                      <input type="hidden" name="business_id" value={b.id} />
-                      <button className="rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-dark">
-                        Add
-                      </button>
-                    </form>
-                  </li>
-                ))}
+                .map((b: any) => {
+                  const cats: { id: string; slug: string; name: string }[] = (b.business_categories ?? [])
+                    .map((bc: any) => bc.categories)
+                    .filter(Boolean);
+                  const locs: string[] = (b.business_locations ?? []).map((bl: any) => bl.location).filter(Boolean);
+                  return (
+                    <li key={b.id} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{b.business_name || b.display_name}</p>
+                        <p className="text-xs text-slate-500">{b.users?.email}</p>
+                        {cats.length > 0 && (
+                          <ul className="mt-2 flex flex-wrap gap-1.5">
+                            {cats.map((c) => {
+                              const match = requestCategoryId && c.id === requestCategoryId;
+                              return (
+                                <li
+                                  key={c.id}
+                                  className={
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium " +
+                                    (match ? "bg-brand/10 text-brand ring-1 ring-brand/20" : "bg-slate-100 text-slate-600")
+                                  }
+                                  title={match ? "Matches this request's industry" : ""}
+                                >
+                                  <IndustryIcon slug={c.slug} className="h-3 w-3" />
+                                  {c.name}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                        {locs.length > 0 && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            <span className="font-medium text-slate-600">Serves:</span>{" "}
+                            {locs.map((loc, i) => {
+                              const matched = locationsMatch([loc], r.location);
+                              return (
+                                <span key={loc + i}>
+                                  {i > 0 && ", "}
+                                  <span className={matched ? "font-semibold text-brand" : ""}>
+                                    {matched ? "✓ " : ""}{loc}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <form action={addMatchAction}>
+                        <input type="hidden" name="request_id" value={r.id} />
+                        <input type="hidden" name="business_id" value={b.id} />
+                        <button className="rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-dark">
+                          Add
+                        </button>
+                      </form>
+                    </li>
+                  );
+                })}
               {(addable ?? []).filter((b: any) => !matchedIds.has(b.id)).length === 0 && (
                 <li className="py-2 text-sm text-slate-500">No businesses to add. Try a different search.</li>
               )}
