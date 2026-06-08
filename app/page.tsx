@@ -107,8 +107,7 @@ export default async function HomePage() {
               </h1>
 
               <p className="animate-fade-up delay-200 mt-5 max-w-xl text-balance text-lg text-white/70 sm:text-xl">
-                Folio is the marketplace where Nigerian customers post what they need, and trusted businesses in
-                their industry, area and budget reach out directly. Real customers. No spam. Fair pricing.
+                Customers post what they need. Vetted businesses reach out.
               </p>
 
               <div className="animate-fade-up delay-300 mt-9 grid gap-3 sm:grid-cols-2">
@@ -118,7 +117,7 @@ export default async function HomePage() {
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">Looking for a service?</p>
                   <p className="mt-2 text-xl font-bold text-white">Post a request →</p>
-                  <p className="mt-1 text-sm text-white/80">Free. Tell us what you need; vetted businesses come to you.</p>
+                  <p className="mt-1 text-sm text-white/80">Free. Businesses come to you.</p>
                   <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-500 group-hover:translate-x-0" />
                 </Link>
                 <Link
@@ -127,9 +126,7 @@ export default async function HomePage() {
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Run a business?</p>
                   <p className="mt-2 text-xl font-bold text-white">Get vetted leads →</p>
-                  <p className="mt-1 text-sm text-white/65">
-                    Sign up, complete compliance, get matched leads in your industry & area.
-                  </p>
+                  <p className="mt-1 text-sm text-white/65">Matched to your industry and area.</p>
                 </Link>
               </div>
 
@@ -156,7 +153,7 @@ export default async function HomePage() {
         <div className="animate-fade-up delay-500 border-y border-white/5 bg-white/[0.02] py-6">
           <div className="mx-auto max-w-6xl px-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
-              Real requests landing in inboxes right now
+              Live on Folio
             </p>
             <div className="relative mt-3 overflow-hidden">
               <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-ink to-transparent" />
@@ -183,9 +180,6 @@ export default async function HomePage() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">How Folio works</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Two sides. One simple loop.</h2>
-            <p className="mt-3 text-base text-slate-600 sm:text-lg">
-              Whether you need a service or run a business that provides one, Folio gets you to the deal faster.
-            </p>
           </div>
 
           <div className="mt-14 grid gap-8 lg:grid-cols-2">
@@ -195,9 +189,9 @@ export default async function HomePage() {
               illustration={<StackIllustration className="h-20 w-24" />}
               cta={{ href: "/order", label: "Post a free request →" }}
               steps={[
-                { n: 1, title: "Post what you need", body: "Describe it, set a budget range and location. AI auto-tags the industry." },
-                { n: 2, title: "Verify with a code", body: "One email, one 4-digit code. No account or password to manage." },
-                { n: 3, title: "Sit back and pick", body: "Up to 10 vetted businesses in your area reach out. You choose your favourite." },
+                { n: 1, title: "Post what you need", body: "Describe it, set a budget and location." },
+                { n: 2, title: "Verify with a code", body: "One email, one 4-digit code." },
+                { n: 3, title: "Pick your favourite", body: "Up to 10 vetted businesses reach out." },
               ]}
             />
             <FlowCard
@@ -207,9 +201,9 @@ export default async function HomePage() {
               accent
               cta={{ href: "/login", label: "Start receiving leads →" }}
               steps={[
-                { n: 1, title: "Sign up + compliance", body: "Free. Submit standard docs (CAC RC/BN or NIN) and get verified." },
-                { n: 2, title: "Get matched", body: "We send you leads that match your industry, location and budget range." },
-                { n: 3, title: "Unlock and close", body: `Spend credits to reveal the client's contact. From ${sampleUnlock} credit on a ${formatNaira(100_000)} brief.` },
+                { n: 1, title: "Sign up + compliance", body: "Free. Submit CAC or NIN, get verified." },
+                { n: 2, title: "Get matched", body: "Leads in your industry, location and budget." },
+                { n: 3, title: "Unlock and close", body: `Spend credits to reveal contact. From ${sampleUnlock} credit on a ${formatNaira(100_000)} brief.` },
               ]}
             />
           </div>
@@ -222,35 +216,32 @@ export default async function HomePage() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Why Folio</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built for trust, not noise.</h2>
-            <p className="mt-3 text-base text-slate-600 sm:text-lg">
-              Every part of the flow is designed to keep customer signal high and business spam low.
-            </p>
           </div>
 
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             <TrustCard
               title="Verified businesses"
-              body="Compliance review against standard Nigerian docs — CAC RC/BN, NIN, government ID — before the badge."
+              body="CAC, NIN and government ID checked before any badge goes live."
             />
             <TrustCard
               title="Exclusive matches"
-              body="Only 10 businesses can unlock a single request. No spam piles. Higher response rates."
+              body="Capped at 10 businesses per request."
             />
             <TrustCard
               title="Pay-as-you-go"
-              body={`Buy credits when you need them. 1 credit = ${formatNaira(creditNaira)}. Unlock cost scales with the lead's budget.`}
+              body={`1 credit = ${formatNaira(creditNaira)}. Unlock cost scales with the budget.`}
             />
             <TrustCard
               title="Curated by humans"
-              body="Every request is admin-reviewed before it goes out to businesses. Quality over volume."
+              body="Every request is admin-reviewed before it ships."
             />
             <TrustCard
               title="Mobile-first"
-              body="Built to work everywhere your customers actually browse. Fast on 4G, beautiful on every screen."
+              body="Fast on 4G. Looks right on every screen."
             />
             <TrustCard
               title="Your own page"
-              body="Each business gets a public Folio page with logo, gallery and socials at folio.cafe/b/your-name."
+              body="A public Folio page at folio.cafe/b/your-name."
             />
           </div>
         </div>
@@ -262,9 +253,6 @@ export default async function HomePage() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Industries we serve</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Whatever you do, you fit.</h2>
-            <p className="mt-3 text-base text-slate-600 sm:text-lg">
-              Folio is organised around the industries Nigerian businesses actually work in.
-            </p>
           </div>
 
           <ul className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -303,7 +291,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customers</p>
               <p className="mt-2 text-3xl font-bold tracking-tight">Free to post</p>
-              <p className="mt-2 text-sm text-slate-600">Posting a request is free. For requests over ₦1m you can pay a small priority fee — it signals to businesses that you're a serious buyer, so you get faster, sharper quotes.</p>
+              <p className="mt-2 text-sm text-slate-600">Posting is free. Add a small priority fee on briefs over ₦1m for faster quotes.</p>
               <Link href="/order" className="mt-5 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 Post a request →
               </Link>
@@ -312,7 +300,7 @@ export default async function HomePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Businesses</p>
               <p className="mt-2 text-3xl font-bold tracking-tight">Pay as you unlock</p>
               <p className="mt-2 text-sm text-slate-600">
-                Top up your wallet from {formatNaira(1000)}. 1 credit = {formatNaira(creditNaira)}. Unlock cost scales with the lead's budget.
+                Top up from {formatNaira(1000)}. 1 credit = {formatNaira(creditNaira)}.
               </p>
               <Link href="/login" className="mt-5 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
                 Get started →
@@ -372,7 +360,7 @@ export default async function HomePage() {
             </span>
           </h2>
           <p className="mt-4 text-base text-white/70 sm:text-lg">
-            Whether you're hiring or selling, Folio gets you to the deal faster.
+            Folio gets you to the deal faster.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
